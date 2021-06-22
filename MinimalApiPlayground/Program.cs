@@ -1,4 +1,5 @@
 using static ResultHelpers;
+using static ValidationHelpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +35,7 @@ app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
 {
-    if (!todo.TryValidate(out ValidationErrors errors)) return BadRequest(errors);
+    if (!TryValidate(todo, out var errors)) return BadRequest(errors);
 
     db.Todos.Add(todo);
     await db.SaveChangesAsync();
@@ -44,7 +45,7 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
 {
-    if (!inputTodo.TryValidate(out ValidationErrors errors)) return BadRequest(errors);
+    if (!TryValidate(inputTodo, out var errors)) return BadRequest(errors);
 
     var todo = await db.Todos.FindAsync(id);
 
@@ -82,7 +83,7 @@ class Todo
     public int Id { get; set; }
     [Required] public string Title { get; set; }
     public bool IsComplete { get; set; }
-};
+}
 
 class TodoDb : DbContext
 {

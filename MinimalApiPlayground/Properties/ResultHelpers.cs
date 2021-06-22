@@ -6,7 +6,7 @@
     public static IResult CreatedAt(string url, object value = null) => new CreatedAtResult(url, value);
     public static IResult BadRequest() => new BadRequestResult();
 
-    public static IResult BadRequest(ValidationErrors errors)
+    public static IResult BadRequest(IDictionary<string, string[]> errors)
     {
         var problem = new ValidationProblemDetails(errors)
         {

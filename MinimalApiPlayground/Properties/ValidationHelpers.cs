@@ -1,6 +1,6 @@
 ﻿static class ValidationHelpers
 {
-    public static bool TryValidate<T>(this T target, out ValidationErrors errors) where T : class
+    public static bool TryValidate<T>(T target, out IDictionary<string, string[]> errors) where T : class
     {
         // TODO: Make recursive
 
@@ -9,8 +9,7 @@
             throw new ArgumentNullException(nameof(target));
         }
 
-        var items = new Dictionary<object, object>();
-        var validationContext = new ValidationContext(target, items);
+        var validationContext = new ValidationContext(target);
         var validationResults = new List<ValidationResult>();
 
         var isValid = Validator.TryValidateObject(target, validationContext, validationResults);
@@ -34,26 +33,12 @@
             }
         }
 
-        errors = new ValidationErrors(errorsList.Count);
+        errors = new Dictionary<string, string[]>(errorsList.Count);
         foreach (var error in errorsList)
         {
             errors.Add(error.Key, error.Value.ToArray());
         }
 
         return isValid;
-    }
-}
-
-class ValidationErrors : Dictionary<string, string[]>
-{
-    public ValidationErrors() : base()
-    {
-
-    }
-
-    public ValidationErrors(int capacity)
-        : base(capacity)
-    {
-
     }
 }
