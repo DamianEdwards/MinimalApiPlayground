@@ -21,11 +21,14 @@ app.MapGet("/throw", () => { throw new Exception("uh oh"); });
 app.MapGet("/error", () => "An error occurred. This should probably be formatted as Problem Details.");
 
 app.MapGet("/todos/sample", () => new[] {
-    new Todo("Do this") { Id = 1 },
-    new Todo("Do this too") { Id = 2 }
+    new Todo { Id = 1, Title = "Do this" },
+    new Todo { Id = 2, Title = "Do this too" }
 });
 
 app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync());
+
+app.MapGet("/todos/incomplete", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync());
+app.MapGet("/todos/complete", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync());
 
 app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
 {
@@ -75,11 +78,6 @@ app.Run();
 
 class Todo
 {
-    public Todo(string title)
-    {
-        Title = title;
-    }
-
     public int Id { get; set; }
     [Required] public string Title { get; set; }
     public bool IsComplete { get; set; }
