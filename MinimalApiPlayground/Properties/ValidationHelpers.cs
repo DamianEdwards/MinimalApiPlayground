@@ -2,6 +2,8 @@
 {
     public static bool TryValidate<T>(this T target, out ValidationErrors errors) where T : class
     {
+        // TODO: Make recursive
+
         if (target == null)
         {
             throw new ArgumentNullException(nameof(target));
