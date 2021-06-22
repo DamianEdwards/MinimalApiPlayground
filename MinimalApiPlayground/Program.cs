@@ -1,20 +1,23 @@
 using static ResultHelpers;
 
 var builder = WebApplication.CreateBuilder(args);
-var config = builder.Configuration;
-var connString = config.GetConnectionString("Todos") ?? "Data Source=todos.db";
 
-var services = builder.Services;
-services.AddDbContext<TodoDb>(options => options.UseSqlite(connString));
+var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Data Source=todos.db";
+
+builder.Services.AddSqlite<TodoDb>(connectionString);
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 var app = builder.Build();
 
+app.UseExceptionHandler("/error");
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
 
 app.MapGet("/", () => new { Hello = "World" });
+app.MapGet("/throw", () => { throw new Exception("uh oh"); });
+app.MapGet("/error", () => "An error occurred. This should probably be formatted as Problem Details.");
 
 app.MapGet("/todos/sample", () => new[] {
     new Todo("Do this") { Id = 1 },
