@@ -17,7 +17,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapGet("/", () => new { Hello = "World" });
+
 app.MapGet("/throw", () => { throw new Exception("uh oh"); });
+
 app.MapGet("/error", () => "An error occurred. This should probably be formatted as Problem Details.");
 
 app.MapGet("/todos/sample", () => new[] {
@@ -28,6 +30,7 @@ app.MapGet("/todos/sample", () => new[] {
 app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync());
 
 app.MapGet("/todos/incomplete", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync());
+
 app.MapGet("/todos/complete", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync());
 
 app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
@@ -74,6 +77,13 @@ app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
     return NotFound();
 });
 
+app.MapPost("/todolist", (TodoList list) =>
+{
+    if (!TryValidate(list, out var errors)) return BadRequest(errors);
+
+    return Ok();
+});
+
 app.Run();
 
 class Todo
@@ -81,6 +91,12 @@ class Todo
     public int Id { get; set; }
     [Required] public string Title { get; set; }
     public bool IsComplete { get; set; }
+}
+
+class TodoList
+{
+    [Required] public string Title { get; set; }
+    public ICollection<Todo> Todos { get; set; }
 }
 
 class TodoDb : DbContext
