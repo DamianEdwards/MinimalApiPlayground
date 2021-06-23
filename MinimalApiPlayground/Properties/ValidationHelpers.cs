@@ -17,7 +17,7 @@ static class ValidationHelpers
         return isValid;
     }
 
-    private static int _maxDepth = 3;
+    private static int _maxDepth = 3; // Who'd ever need 
     private static ConcurrentDictionary<Type, PropertyInfo[]> _typeCache = new();
 
     private static bool TryValidateImpl(object target, IDictionary<string, string[]> errors, string prefix = "", int currentDepth = 0)
@@ -100,14 +100,9 @@ static class ValidationHelpers
 
     private static bool IsComplexType(Type type)
     {
-        if (type.IsGenericType && (
-            type.GetGenericTypeDefinition() == typeof(Nullable<>)
-            || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)
-            || type.GetGenericTypeDefinition() == typeof(ICollection<>)
-            || type.GetGenericTypeDefinition() == typeof(IList<>)
-            ))
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
         {
-            // Known wrapper type, check if the nested type is complex
+            // Nullable type, check if the nested type is complex
             return IsComplexType(type.GetGenericArguments()[0]);
         }
 
