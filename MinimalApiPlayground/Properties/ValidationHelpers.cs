@@ -22,6 +22,8 @@ static class ValidationHelpers
 
     private static bool TryValidateImpl(object target, IDictionary<string, string[]> errors, string prefix = "", int currentDepth = 0)
     {
+        // TODO: Add cycle detection
+
         var validationContext = new ValidationContext(target);
         var validationResults = new List<ValidationResult>();
 
