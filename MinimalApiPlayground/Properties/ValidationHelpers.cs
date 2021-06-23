@@ -63,7 +63,7 @@ static class ValidationHelpers
                 var propertyName = property.Name;
                 var propertyType = property.PropertyType;
 
-                if (propertyType.GetGenericTypeDefinition() == typeof(ICollection<>))
+                if (propertyType.IsAssignableTo(typeof(IEnumerable)))
                 {
                     // Validate each instance in the collection
                     var items = property.GetValue(target) as IEnumerable;
