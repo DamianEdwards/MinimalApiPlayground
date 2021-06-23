@@ -65,6 +65,17 @@ static class ValidationHelpers
                 var propertyName = property.Name;
                 var propertyType = property.PropertyType;
 
+                if (property.GetIndexParameters().Length == 0)
+                {
+                    var propertyValue = property.GetValue(target);
+                    isValid = TryValidateImpl(propertyValue, errors, prefix: $"{propertyName}.", currentDepth + 1);
+
+                    if (!isValid)
+                    {
+                        break;
+                    }
+                }
+
                 if (propertyType.IsAssignableTo(typeof(IEnumerable)))
                 {
                     // Validate each instance in the collection
@@ -80,16 +91,6 @@ static class ValidationHelpers
                             break;
                         }
                         index++;
-                    }
-                }
-                else
-                {
-                    var propertyValue = property.GetValue(target);
-                    isValid = TryValidateImpl(propertyValue, errors, prefix: $"{propertyName}.", currentDepth + 1);
-
-                    if (!isValid)
-                    {
-                        break;
                     }
                 }
             }
