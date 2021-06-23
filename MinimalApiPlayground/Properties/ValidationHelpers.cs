@@ -77,6 +77,7 @@ static class ValidationHelpers
                         {
                             break;
                         }
+                        index++;
                     }
                 }
                 else
