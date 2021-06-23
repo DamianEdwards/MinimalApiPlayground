@@ -6,13 +6,18 @@ static class ValidationHelpers
 {
     public static bool TryValidate<T>(T target, out IDictionary<string, string[]> errors) where T : class
     {
+        return TryValidate(target, recurse: true, out errors);
+    }
+
+    public static bool TryValidate<T>(T target, bool recurse, out IDictionary<string, string[]> errors) where T : class
+    {
         if (target == null)
         {
             throw new ArgumentNullException(nameof(target));
         }
 
         errors = new Dictionary<string, string[]>();
-        var isValid = TryValidateImpl(target, errors);
+        var isValid = TryValidateImpl(target, recurse, errors);
 
         return isValid;
     }
@@ -20,7 +25,7 @@ static class ValidationHelpers
     private static int _maxDepth = 3; // Who'd ever need 
     private static ConcurrentDictionary<Type, PropertyInfo[]> _typeCache = new();
 
-    private static bool TryValidateImpl(object target, IDictionary<string, string[]> errors, string prefix = "", int currentDepth = 0)
+    private static bool TryValidateImpl(object target, bool recurse, IDictionary<string, string[]> errors, string prefix = "", int currentDepth = 0)
     {
         // TODO: Add cycle detection
 
@@ -54,7 +59,7 @@ static class ValidationHelpers
             errors.Add($"{prefix}{error.Key}", error.Value.ToArray());
         }
 
-        if (isValid && currentDepth < _maxDepth)
+        if (recurse && isValid && currentDepth < _maxDepth)
         {
             // Validate complex properties
             var complexProperties = _typeCache.GetOrAdd(target.GetType(),t =>
@@ -68,7 +73,7 @@ static class ValidationHelpers
                 if (property.GetIndexParameters().Length == 0)
                 {
                     var propertyValue = property.GetValue(target);
-                    isValid = TryValidateImpl(propertyValue, errors, prefix: $"{propertyName}.", currentDepth + 1);
+                    isValid = TryValidateImpl(propertyValue, recurse, errors, prefix: $"{propertyName}.", currentDepth + 1);
 
                     if (!isValid)
                     {
@@ -84,7 +89,7 @@ static class ValidationHelpers
                     foreach (var item in items)
                     {
                         var itemPrefix = $"{propertyName}[{index}].";
-                        isValid = TryValidateImpl(item, errors, prefix: itemPrefix, currentDepth + 1);
+                        isValid = TryValidateImpl(item, recurse, errors, prefix: itemPrefix, currentDepth + 1);
 
                         if (!isValid)
                         {
