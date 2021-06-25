@@ -1,5 +1,5 @@
-using static ResultHelpers;
-using static ValidationHelpers;
+using static Microsoft.AspNetCore.Http.Results;
+using static Microsoft.AspNetCore.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,7 +77,21 @@ app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
     return NotFound();
 });
 
+app.MapDelete("/todos/deleteall", async (TodoDb db) =>
+{
+    var rowCount = await db.Database.ExecuteSqlRawAsync("DELETE FROM Todos");
+
+    return Ok(rowCount);
+});
+
 app.MapPost("/todolist", (TodoList list) =>
+{
+    if (!TryValidate(list, out var errors)) return BadRequest(errors);
+
+    return Ok();
+});
+
+app.MapPost("/todocycle", (TodoList list) =>
 {
     if (!TryValidate(list, out var errors)) return BadRequest(errors);
 

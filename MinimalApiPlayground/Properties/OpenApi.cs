@@ -27,8 +27,8 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
     {
         return app =>
         {
-            ConfigureSwashbuckle(app);
             next(app);
+            ConfigureSwashbuckle(app);
         };
     }
 

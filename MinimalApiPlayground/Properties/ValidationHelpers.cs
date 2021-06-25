@@ -2,119 +2,131 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 
-static class ValidationHelpers
+namespace Microsoft.AspNetCore
 {
-    public static bool TryValidate<T>(T target, out IDictionary<string, string[]> errors) where T : class
+    static class Validation
     {
-        return TryValidate(target, recurse: true, out errors);
-    }
-
-    public static bool TryValidate<T>(T target, bool recurse, out IDictionary<string, string[]> errors) where T : class
-    {
-        if (target == null)
+        public static bool TryValidate<T>(T target, out IDictionary<string, string[]> errors) where T : class
         {
-            throw new ArgumentNullException(nameof(target));
+            return TryValidate(target, recurse: true, out errors);
         }
 
-        errors = new Dictionary<string, string[]>();
-        var isValid = TryValidateImpl(target, recurse, errors);
-
-        return isValid;
-    }
-
-    private static int _maxDepth = 3; // Who'd ever need 
-    private static ConcurrentDictionary<Type, PropertyInfo[]> _typeCache = new();
-
-    private static bool TryValidateImpl(object target, bool recurse, IDictionary<string, string[]> errors, string prefix = "", int currentDepth = 0)
-    {
-        // TODO: Add cycle detection
-
-        var validationContext = new ValidationContext(target);
-        var validationResults = new List<ValidationResult>();
-
-        // Validate the simple properties on the target first (Validator.TryValidateObject is non-recursive)
-        var isValid = Validator.TryValidateObject(target, validationContext, validationResults);
-
-        var errorsList = new Dictionary<string, List<string>>();
-        foreach (var result in validationResults)
+        public static bool TryValidate<T>(T target, bool recurse, out IDictionary<string, string[]> errors) where T : class
         {
-            foreach (var name in result.MemberNames)
+            if (target == null)
             {
-                List<string> fieldErrors;
-                if (errorsList.ContainsKey(name))
-                {
-                    fieldErrors = errorsList[name];
-                }
-                else
-                {
-                    fieldErrors = new List<string>();
-                    errorsList.Add(name, fieldErrors);
-                }
-                fieldErrors.Add(result.ErrorMessage);
+                throw new ArgumentNullException(nameof(target));
             }
+
+            var validatedObjects = new Dictionary<object, bool?>();
+            errors = new Dictionary<string, string[]>();
+            var isValid = TryValidateImpl(target, recurse, errors, validatedObjects);
+
+            return isValid;
         }
 
-        foreach (var error in errorsList)
-        {
-            errors.Add($"{prefix}{error.Key}", error.Value.ToArray());
-        }
+        private static int _maxDepth = 3; // Who'd ever need more than 3
+        private static ConcurrentDictionary<Type, PropertyInfo[]> _typeCache = new();
 
-        if (recurse && isValid && currentDepth < _maxDepth)
+        private static bool TryValidateImpl(object target, bool recurse, IDictionary<string, string[]> errors, Dictionary<object, bool?> validatedObjects, string prefix = "", int currentDepth = 0)
         {
-            // Validate complex properties
-            var complexProperties = _typeCache.GetOrAdd(target.GetType(),t =>
-                t.GetProperties().Where(p => IsComplexType(p.PropertyType)).ToArray());
-            
-            foreach (var property in complexProperties)
+            if (validatedObjects.ContainsKey(target))
             {
-                var propertyName = property.Name;
-                var propertyType = property.PropertyType;
+                var result = validatedObjects[target];
+                return !result.HasValue || result == true;
+            }
 
-                if (property.GetIndexParameters().Length == 0)
+            validatedObjects.Add(target, null);
+
+            var validationContext = new ValidationContext(target);
+            var validationResults = new List<ValidationResult>();
+
+            // Validate the simple properties on the target first (Validator.TryValidateObject is non-recursive)
+            var isValid = Validator.TryValidateObject(target, validationContext, validationResults);
+
+            var errorsList = new Dictionary<string, List<string>>();
+            foreach (var result in validationResults)
+            {
+                foreach (var name in result.MemberNames)
                 {
-                    var propertyValue = property.GetValue(target);
-                    isValid = TryValidateImpl(propertyValue, recurse, errors, prefix: $"{propertyName}.", currentDepth + 1);
-
-                    if (!isValid)
+                    List<string> fieldErrors;
+                    if (errorsList.ContainsKey(name))
                     {
-                        break;
+                        fieldErrors = errorsList[name];
                     }
-                }
-
-                if (propertyType.IsAssignableTo(typeof(IEnumerable)))
-                {
-                    // Validate each instance in the collection
-                    var items = property.GetValue(target) as IEnumerable;
-                    var index = 0;
-                    foreach (var item in items)
+                    else
                     {
-                        var itemPrefix = $"{propertyName}[{index}].";
-                        isValid = TryValidateImpl(item, recurse, errors, prefix: itemPrefix, currentDepth + 1);
+                        fieldErrors = new List<string>();
+                        errorsList.Add(name, fieldErrors);
+                    }
+                    fieldErrors.Add(result.ErrorMessage);
+                }
+            }
+
+            foreach (var error in errorsList)
+            {
+                errors.Add($"{prefix}{error.Key}", error.Value.ToArray());
+            }
+
+            if (recurse && isValid && currentDepth < _maxDepth)
+            {
+                // Validate complex properties
+                var complexProperties = _typeCache.GetOrAdd(target.GetType(), t =>
+                     t.GetProperties().Where(p => IsComplexType(p.PropertyType)).ToArray());
+
+                foreach (var property in complexProperties)
+                {
+                    var propertyName = property.Name;
+                    var propertyType = property.PropertyType;
+
+                    if (property.GetIndexParameters().Length == 0)
+                    {
+                        var propertyValue = property.GetValue(target);
+                        isValid = TryValidateImpl(propertyValue, recurse, errors, validatedObjects, prefix: $"{propertyName}.", currentDepth + 1);
 
                         if (!isValid)
                         {
                             break;
                         }
-                        index++;
+                    }
+
+                    if (propertyType.IsAssignableTo(typeof(IEnumerable)))
+                    {
+                        // Validate each instance in the collection
+                        var items = property.GetValue(target) as IEnumerable;
+                        var index = 0;
+                        foreach (var item in items)
+                        {
+                            var itemPrefix = $"{propertyName}[{index}].";
+                            isValid = TryValidateImpl(item, recurse, errors, validatedObjects, prefix: itemPrefix, currentDepth + 1);
+
+                            if (!isValid)
+                            {
+                                break;
+                            }
+                            index++;
+                        }
                     }
                 }
             }
+
+            validatedObjects[target] = isValid;
+
+            return isValid;
         }
 
-        return isValid;
-    }
-
-    private static bool IsComplexType(Type type)
-    {
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+        private static bool IsComplexType(Type type)
         {
-            // Nullable type, check if the nested type is complex
-            return IsComplexType(type.GetGenericArguments()[0]);
-        }
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                // Nullable type, check if the nested type is complex
+                return IsComplexType(type.GetGenericArguments()[0]);
+            }
 
-        return !(type.IsPrimitive
-            || type.IsEnum
-            || type.Equals(typeof(string))
-            || type.Equals(typeof(decimal)));
+            return !(type.IsPrimitive
+                || type.IsEnum
+                || type.Equals(typeof(string))
+                || type.Equals(typeof(decimal)));
+        }
     }
 }
