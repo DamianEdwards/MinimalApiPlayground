@@ -59,7 +59,10 @@ namespace Microsoft.AspNetCore
                         fieldErrors = new List<string>();
                         errorsList.Add(name, fieldErrors);
                     }
-                    fieldErrors.Add(result.ErrorMessage);
+                    if (!string.IsNullOrEmpty(result.ErrorMessage))
+                    {
+                        fieldErrors.Add(result.ErrorMessage);
+                    }
                 }
             }
 
@@ -82,7 +85,10 @@ namespace Microsoft.AspNetCore
                     if (property.GetIndexParameters().Length == 0)
                     {
                         var propertyValue = property.GetValue(target);
-                        isValid = TryValidateImpl(propertyValue, recurse, errors, validatedObjects, prefix: $"{propertyName}.", currentDepth + 1);
+                        if (propertyValue != null)
+                        {
+                            isValid = TryValidateImpl(propertyValue, recurse, errors, validatedObjects, prefix: $"{propertyName}.", currentDepth + 1);
+                        }
 
                         if (!isValid)
                         {
@@ -94,17 +100,20 @@ namespace Microsoft.AspNetCore
                     {
                         // Validate each instance in the collection
                         var items = property.GetValue(target) as IEnumerable;
-                        var index = 0;
-                        foreach (var item in items)
+                        if (items != null)
                         {
-                            var itemPrefix = $"{propertyName}[{index}].";
-                            isValid = TryValidateImpl(item, recurse, errors, validatedObjects, prefix: itemPrefix, currentDepth + 1);
-
-                            if (!isValid)
+                            var index = 0;
+                            foreach (var item in items)
                             {
-                                break;
+                                var itemPrefix = $"{propertyName}[{index}].";
+                                isValid = TryValidateImpl(item, recurse, errors, validatedObjects, prefix: itemPrefix, currentDepth + 1);
+
+                                if (!isValid)
+                                {
+                                    break;
+                                }
+                                index++;
                             }
-                            index++;
                         }
                     }
                 }

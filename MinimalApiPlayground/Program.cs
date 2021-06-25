@@ -16,7 +16,18 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-app.MapGet("/", () => new { Hello = "World" });
+app.MapGet("/", () => "Hello World");
+app.MapGet("/hello", () => new { Hello = "World" });
+
+app.MapGet("/html", (HttpContext context) => Html(
+@$"<!doctype html>
+<html>
+<head><title>miniHTML</title></head>
+<body>
+<h1>Hello World</h1>
+<p>The time on the server is {DateTime.Now.ToString("O")}</p>
+</body>
+</html>"));
 
 app.MapGet("/throw", () => { throw new Exception("uh oh"); });
 
@@ -65,6 +76,34 @@ app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     return NoContent();
 });
 
+app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
+{
+    if (await db.Todos.FindAsync(id) is Todo todo)
+    {
+        todo.IsComplete = true;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+    else
+    {
+        return NotFound();
+    }
+});
+
+app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
+{
+    if (await db.Todos.FindAsync(id) is Todo todo)
+    {
+        todo.IsComplete = false;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+    else
+    {
+        return NotFound();
+    }
+});
+
 app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
 {
     if (await db.Todos.FindAsync(id) is Todo todo)
@@ -103,14 +142,14 @@ app.Run();
 class Todo
 {
     public int Id { get; set; }
-    [Required] public string Title { get; set; }
+    [Required] public string? Title { get; set; }
     public bool IsComplete { get; set; }
 }
 
 class TodoList
 {
-    [Required] public string Title { get; set; }
-    public ICollection<Todo> Todos { get; set; }
+    [Required] public string? Title { get; set; }
+    public ICollection<Todo>? Todos { get; set; }
 }
 
 class TodoDb : DbContext
@@ -118,5 +157,5 @@ class TodoDb : DbContext
     public TodoDb(DbContextOptions<TodoDb> options)
         : base(options) { }
 
-    public DbSet<Todo> Todos { get; set; }
+    public DbSet<Todo> Todos => Set<Todo>();
 }

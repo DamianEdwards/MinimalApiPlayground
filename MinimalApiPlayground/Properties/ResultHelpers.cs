@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Routing;
+﻿using System.Diagnostics;
+using System.Net.Mime;
+using System.Text;
+using Microsoft.AspNetCore.Routing;
 
 namespace Microsoft.AspNetCore.Http
 {
@@ -25,21 +28,22 @@ namespace Microsoft.AspNetCore.Http
         public static IResult Redirect(string url) => new RedirectResult(url);
         public static IResult Redirect(string url, bool permanent) => new RedirectResult(url, permanent);
         public static IResult StatusCode(int statusCode) => new StatusCodeResult(statusCode);
+        public static IResult Html(string html) => new HtmlResult(html);
 
         class CreatedAtResult : IResult
         {
-            private readonly string _url;
-            private readonly string _routePattern;
-            private readonly object _routeValues;
-            private readonly object _responseBody;
+            private readonly string? _url;
+            private readonly string? _routePattern;
+            private readonly object? _routeValues;
+            private readonly object? _responseBody;
 
-            public CreatedAtResult(string url, object responseBody)
+            public CreatedAtResult(string url, object? responseBody)
             {
                 _url = url;
                 _responseBody = responseBody;
             }
 
-            public CreatedAtResult(string routePattern, object routeValues, object responseBody)
+            public CreatedAtResult(string routePattern, object? routeValues, object? responseBody)
             {
                 _routePattern = routePattern;
                 _routeValues = routeValues;
@@ -48,15 +52,15 @@ namespace Microsoft.AspNetCore.Http
 
             public async Task ExecuteAsync(HttpContext httpContext)
             {
-                string url;
+                string? url;
 
-                if (string.IsNullOrEmpty(_url))
+                if (string.IsNullOrEmpty(_url) && !string.IsNullOrEmpty(_routePattern))
                 {
                     var endpointSources = httpContext.RequestServices.GetRequiredService<IEnumerable<EndpointDataSource>>();
-                    RouteEndpoint targetEndpoint = null;
+                    RouteEndpoint? targetEndpoint = null;
                     foreach (var endpointSource in endpointSources)
                     {
-                        targetEndpoint = FindRouteEndpoint(endpointSource, HttpMethods.Get, _routePattern);
+                        targetEndpoint = FindRouteEndpoint(endpointSource, HttpMethods.Get!, _routePattern);
                         if (targetEndpoint != null) break;
                     }
 
@@ -74,6 +78,8 @@ namespace Microsoft.AspNetCore.Http
                     url = _url;
                 }
 
+                Debug.Assert(!string.IsNullOrEmpty(url));
+
                 httpContext.Response.StatusCode = StatusCodes.Status201Created;
                 httpContext.Response.Headers.Add("Location", url);
 
@@ -83,7 +89,7 @@ namespace Microsoft.AspNetCore.Http
                 }
             }
 
-            private static RouteEndpoint FindRouteEndpoint(EndpointDataSource endpointDataSource, string httpMethod, string routePattern)
+            private static RouteEndpoint? FindRouteEndpoint(EndpointDataSource endpointDataSource, string httpMethod, string? routePattern)
             {
                 foreach (var endpoint in endpointDataSource.Endpoints)
                 {
@@ -118,6 +124,23 @@ namespace Microsoft.AspNetCore.Http
                     httpContext.Response.StatusCode = _problem.Status.Value;
                 }
                 await httpContext.Response.WriteAsJsonAsync(_problem, _problem.GetType());
+            }
+        }
+
+        class HtmlResult : IResult
+        {
+            private readonly string _html;
+
+            public HtmlResult(string html)
+            {
+                _html = html;
+            }
+
+            public Task ExecuteAsync(HttpContext httpContext)
+            {
+                httpContext.Response.ContentType = MediaTypeNames.Text.Html;
+                httpContext.Response.ContentLength = Encoding.UTF8.GetByteCount(_html);
+                return httpContext.Response.WriteAsync(_html);
             }
         }
     }

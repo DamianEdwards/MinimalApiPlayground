@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>preview</LangVersion>
+    <Nullable>enable</Nullable>
     <RestoreSources>
       $(RestoreSources);
       https://api.nuget.org/v3/index.json;
