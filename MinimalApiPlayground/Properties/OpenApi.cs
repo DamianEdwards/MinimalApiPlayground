@@ -36,21 +36,27 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
     {
         var env = app.ApplicationServices.GetRequiredService<IHostEnvironment>();
 
-        // Fixup for Swashbuckle RoutePrefix issue
-        var rewriterOptions = new RewriteOptions();
-        rewriterOptions.AddRedirect($"^{UIPath}$", $"{UIPath}/");
-        rewriterOptions.AddRewrite($"^{UIPath}/$", $"{UIPath}/index.html", skipRemainingRules: true);
-        app.UseRewriter(rewriterOptions);
+        if (env.IsDevelopment())
+        {
+            // Fixup for Swashbuckle RoutePrefix issue
+            var rewriterOptions = new RewriteOptions();
+            // redirect from 'docs' to 'docs/'
+            rewriterOptions.AddRedirect($"^{UIPath}$", $"{UIPath}/");
+            // rewrite 'docs/' to 'docs/index.html'
+            rewriterOptions.AddRewrite($"^{UIPath}/$", $"{UIPath}/index.html", skipRemainingRules: true);
+            app.UseRewriter(rewriterOptions);
 
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint($"/{DocumentName}", $"{env.ApplicationName} {Version}");
+                options.RoutePrefix = UIPath;
+            });
+        }
+
+        // This has to be last as the route template is SUPER greedy (it matches '/anything')
         app.UseSwagger(options =>
         {
             options.RouteTemplate = "/{documentName}";
-        });
-
-        app.UseSwaggerUI(options =>
-        {
-            options.SwaggerEndpoint($"/{DocumentName}", $"{env.ApplicationName} {Version}");
-            options.RoutePrefix = UIPath;
         });
     }
 }
