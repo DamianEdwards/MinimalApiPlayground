@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Rewrite;
+﻿using Microsoft.AspNetCore.Rewrite;
 using Microsoft.OpenApi.Models;
 
 [assembly:HostingStartup(typeof(OpenApiConfiguration))]

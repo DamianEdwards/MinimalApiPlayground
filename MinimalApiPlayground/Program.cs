@@ -1,5 +1,5 @@
-using static Microsoft.AspNetCore.Http.Results;
-using static Microsoft.AspNetCore.Validation;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +19,7 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/", () => "Hello World");
 app.MapGet("/hello", () => new { Hello = "World" });
 
-app.MapGet("/html", (HttpContext context) => Html(
+app.MapGet("/html", (HttpContext context) => AppResults.Html(
 @$"<!doctype html>
 <html>
 <head><title>miniHTML</title></head>
@@ -47,33 +47,33 @@ app.MapGet("/todos/complete", async (TodoDb db) => await db.Todos.Where(t => t.I
 app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
 {
     return await db.Todos.FindAsync(id) is Todo todo
-        ? Ok(todo) : NotFound();
+        ? Results.Ok(todo) : Results.NotFound();
 });
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
 {
-    if (!TryValidate(todo, out var errors)) return BadRequest(errors);
+    if (!MinimalValidation.TryValidate(todo, out var errors)) return Results.BadRequest(errors);
 
     db.Todos.Add(todo);
     await db.SaveChangesAsync();
 
-    return CreatedAt($"/todos/{todo.Id}", todo);
+    return Results.Created($"/todos/{todo.Id}", todo);
 });
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
 {
-    if (!TryValidate(inputTodo, out var errors)) return BadRequest(errors);
+    if (!MinimalValidation.TryValidate(inputTodo, out var errors)) return Results.BadRequest(errors);
 
     var todo = await db.Todos.FindAsync(id);
 
-    if (todo is null) return NotFound();
+    if (todo is null) return Results.NotFound();
 
     todo.Title = inputTodo.Title;
     todo.IsComplete = inputTodo.IsComplete;
 
     await db.SaveChangesAsync();
 
-    return NoContent();
+    return Results.NoContent();
 });
 
 app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
@@ -82,11 +82,11 @@ app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
     {
         todo.IsComplete = true;
         await db.SaveChangesAsync();
-        return NoContent();
+        return Results.NoContent();
     }
     else
     {
-        return NotFound();
+        return Results.NotFound();
     }
 });
 
@@ -96,11 +96,11 @@ app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
     {
         todo.IsComplete = false;
         await db.SaveChangesAsync();
-        return NoContent();
+        return Results.NoContent();
     }
     else
     {
-        return NotFound();
+        return Results.NotFound();
     }
 });
 
@@ -110,31 +110,31 @@ app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
     {
         db.Todos.Remove(todo);
         await db.SaveChangesAsync();
-        return Ok(todo);
+        return Results.Ok(todo);
     }
 
-    return NotFound();
+    return Results.NotFound();
 });
 
-app.MapDelete("/todos/deleteall", async (TodoDb db) =>
+app.MapDelete("/todos/delete-all", async (TodoDb db) =>
 {
     var rowCount = await db.Database.ExecuteSqlRawAsync("DELETE FROM Todos");
 
-    return Ok(rowCount);
+    return Results.Ok(rowCount);
 });
 
 app.MapPost("/todolist", (TodoList list) =>
 {
-    if (!TryValidate(list, out var errors)) return BadRequest(errors);
+    if (!MinimalValidation.TryValidate(list, out var errors)) return Results.BadRequest(errors);
 
-    return Ok();
+    return Results.Ok();
 });
 
 app.MapPost("/todocycle", (TodoList list) =>
 {
-    if (!TryValidate(list, out var errors)) return BadRequest(errors);
+    if (!MinimalValidation.TryValidate(list, out var errors)) return Results.BadRequest(errors);
 
-    return Ok();
+    return Results.Ok();
 });
 
 app.Run();

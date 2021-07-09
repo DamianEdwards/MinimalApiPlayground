@@ -1,7 +1,10 @@
-﻿public static class ServiceCollectionExtensions
+﻿namespace Microsoft.EntityFrameworkCore
 {
-    public static IServiceCollection AddSqlite<DbContextType>(this IServiceCollection services, string connectionString) where DbContextType : DbContext
+    public static class ServiceCollectionExtensions
     {
-        return services.AddDbContext<DbContextType>(options => options.UseSqlite(connectionString));
+        public static IServiceCollection AddSqlite<DbContextType>(this IServiceCollection services, string connectionString) where DbContextType : DbContext
+        {
+            return services.AddDbContext<DbContextType>(options => options.UseSqlite(connectionString));
+        }
     }
 }

@@ -2,13 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
-    <RestoreSources>
-      $(RestoreSources);
-      https://api.nuget.org/v3/index.json;
-      https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet6/nuget/v3/index.json
-    </RestoreSources>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +13,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="6.0.0-preview.7.*" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.1.4" />
+    <PackageReference Include="MinimalValidation" Version="0.1.0-pre" />
   </ItemGroup>
 
 </Project>

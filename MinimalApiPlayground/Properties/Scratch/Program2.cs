@@ -1,5 +1,5 @@
-﻿using static Microsoft.AspNetCore.Http.Results;
-using static Microsoft.AspNetCore.Validation;
+﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 
 static class Program2
 {
@@ -24,17 +24,17 @@ static class Program2
         app.MapGet(routes.GetTodoById, async (int id, TodoDb db) =>
         {
             return await db.Todos.FindAsync(id) is Todo todo
-                ? Ok(todo) : NotFound();
+                ? Results.Ok(todo) : Results.NotFound();
         });
 
         app.MapPost(routes.Todos, async (Todo todo, TodoDb db) =>
         {
-            if (!TryValidate(todo, out var errors)) return BadRequest(errors);
+            if (!MinimalValidation.TryValidate(todo, out var errors)) return Results.BadRequest(errors);
 
             db.Todos.Add(todo);
             await db.SaveChangesAsync();
 
-            return CreatedAt(routes.GetTodoById, new { id = todo.Id }, todo);
+            return AppResults.CreatedAt(routes.GetTodoById, new { id = todo.Id }, todo);
         });
     }
 }

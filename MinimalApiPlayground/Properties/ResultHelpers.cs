@@ -1,33 +1,12 @@
 ﻿using System.Diagnostics;
 using System.Net.Mime;
 using System.Text;
-using Microsoft.AspNetCore.Routing;
 
 namespace Microsoft.AspNetCore.Http
 {
-    static class Results
+    static class AppResults
     {
-        public static IResult Ok() => new OkResult();
-        public static IResult Ok(object body) => new JsonResult(body);
-        public static IResult NoContent() => new NoContentResult();
-        public static IResult CreatedAt(string url) => new CreatedAtResult(url, null);
-        public static IResult CreatedAt<T>(string url, T responseBody) => new CreatedAtResult(url, responseBody);
         public static IResult CreatedAt<T>(string routePattern, object routeValues, T responseBody) => new CreatedAtResult(routePattern, routeValues, responseBody);
-        public static IResult BadRequest() => new BadRequestResult();
-
-        public static IResult BadRequest(IDictionary<string, string[]> errors)
-        {
-            var problem = new ValidationProblemDetails(errors)
-            {
-                Status = StatusCodes.Status400BadRequest
-            };
-            return new ProblemDetailsResult(problem);
-        }
-
-        public static IResult NotFound() => new NotFoundResult();
-        public static IResult Redirect(string url) => new RedirectResult(url);
-        public static IResult Redirect(string url, bool permanent) => new RedirectResult(url, permanent);
-        public static IResult StatusCode(int statusCode) => new StatusCodeResult(statusCode);
         public static IResult Html(string html) => new HtmlResult(html);
 
         class CreatedAtResult : IResult
@@ -105,25 +84,6 @@ namespace Microsoft.AspNetCore.Http
                 }
 
                 return null;
-            }
-        }
-
-        class ProblemDetailsResult : IResult
-        {
-            private readonly ProblemDetails _problem;
-
-            public ProblemDetailsResult(ProblemDetails problem)
-            {
-                _problem = problem ?? new ProblemDetails { Status = StatusCodes.Status400BadRequest };
-            }
-
-            public async Task ExecuteAsync(HttpContext httpContext)
-            {
-                if (_problem.Status.HasValue)
-                {
-                    httpContext.Response.StatusCode = _problem.Status.Value;
-                }
-                await httpContext.Response.WriteAsJsonAsync(_problem, _problem.GetType());
             }
         }
 
