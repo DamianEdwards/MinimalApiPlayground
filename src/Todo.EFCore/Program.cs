@@ -9,7 +9,7 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 var app = builder.Build();
 
 using IServiceScope scope = app.Services.CreateScope();
-await scope.ServiceProvider.GetRequiredService<TodoDb>().Database.EnsureCreatedAsync();
+await scope.ServiceProvider.GetRequiredService<TodoDb>().Database.MigrateAsync();
 
 if (app.Environment.IsDevelopment())
 {
