@@ -82,7 +82,7 @@ Task EnsureDb(string connectionString)
                   {nameof(Todo.Id)} INTEGER PRIMARY KEY AUTOINCREMENT,
                   {nameof(Todo.Title)} TEXT NOT NULL,
                   {nameof(Todo.IsComplete)} INTEGER DEFAULT 0 NOT NULL CHECK({nameof(Todo.IsComplete)} IN (0, 1))
-                );";
+                 );";
     return db.ExecuteAsync(sql);
 }
 
