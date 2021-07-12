@@ -1,6 +1,6 @@
-using Dapper;
-using Microsoft.Data.Sqlite;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Data.Sqlite;
+using Dapper;
 
 var builder = WebApplication.CreateBuilder(args);
 

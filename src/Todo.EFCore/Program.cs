@@ -3,13 +3,13 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<TodoDb>(options => options.UseSqlite("Data Source=todos.db"));
+var connectionString = "Data Source=todos.db";
+builder.Services.AddDbContext<TodoDb>(options => options.UseSqlite(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 var app = builder.Build();
 
-using IServiceScope scope = app.Services.CreateScope();
-await scope.ServiceProvider.GetRequiredService<TodoDb>().Database.MigrateAsync();
+await EnsureDb(connectionString);
 
 if (app.Environment.IsDevelopment())
 {
@@ -105,6 +105,13 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
     Results.Ok(await db.Database.ExecuteSqlRawAsync("DELETE FROM Todos")));
 
 app.Run();
+
+Task EnsureDb(string connectionString)
+{
+    var options = new DbContextOptionsBuilder<TodoDb>().UseSqlite(connectionString).Options;
+    using var db = new TodoDb(options);
+    return db.Database.MigrateAsync();
+}
 
 class Todo
 {
