@@ -29,14 +29,24 @@ app.MapGet("/todos/incomplete", async (SqliteConnection db) =>
     await db.QueryAsync<Todo>("SELECT * FROM Todos WHERE IsComplete = false"));
 
 app.MapGet("/todos/{id}", async (int id, SqliteConnection db) =>
-    await db.QuerySingleOrDefaultAsync<Todo>("SELECT * FROM Todos WHERE Id = @id", new { id }) is Todo todo
-        ? Results.Ok(todo)
-        : Results.NotFound());
+{
+    var todo = await db.QuerySingleOrDefaultAsync<Todo>("SELECT * FROM Todos WHERE Id = @id", new { id });
+    if (todo is not null)
+    {
+        return Results.Ok(todo);
+    }
+    else
+    {
+        return Results.NotFound();
+    }
+});
 
 app.MapPost("/todos", async (Todo todo, SqliteConnection db) =>
 {
     if (!MinimalValidation.TryValidate(todo, out var errors))
+    {
         return Results.ValidationProblem(errors);
+    }
 
     var newTodo = await db.QuerySingleAsync<Todo>(
         "INSERT INTO Todos(Title, IsComplete) Values(@Title, @IsComplete) RETURNING * ", todo);
@@ -48,27 +58,55 @@ app.MapPut("/todos/{id}", async (int id, Todo todo, SqliteConnection db) =>
 {
     todo.Id = id;
     if (!MinimalValidation.TryValidate(todo, out var errors))
+    {
         return Results.ValidationProblem(errors);
+    }
 
-    return await db.ExecuteAsync("UPDATE Todos SET Title = @Title, IsComplete = @IsComplete WHERE Id = @Id", todo) == 1
-        ? Results.NoContent()
-        : Results.NotFound();
+    if (await db.ExecuteAsync("UPDATE Todos SET Title = @Title, IsComplete = @IsComplete WHERE Id = @Id", todo) == 1)
+    {
+        return Results.NoContent();
+    }
+    else
+    {
+        return Results.NotFound();
+    }
 });
 
 app.MapPut("/todos/{id}/mark-complete", async (int id, SqliteConnection db) =>
-    await db.ExecuteAsync("UPDATE Todos SET IsComplete = true WHERE Id = @Id", new { id }) == 1
-        ? Results.NoContent()
-        : Results.NotFound());
+{
+    if (await db.ExecuteAsync("UPDATE Todos SET IsComplete = true WHERE Id = @Id", new { id }) == 1)
+    {
+        Results.NoContent();
+    }
+    else
+    {
+        Results.NotFound();
+    }
+});
 
 app.MapPut("/todos/{id}/mark-incomplete", async (int id, SqliteConnection db) =>
-    await db.ExecuteAsync("UPDATE Todos SET IsComplete = false WHERE Id = @Id", new { id }) == 1
-        ? Results.NoContent()
-        : Results.NotFound());
+{
+    if (await db.ExecuteAsync("UPDATE Todos SET IsComplete = false WHERE Id = @Id", new { id }) == 1)
+    {
+        Results.NoContent();
+    }
+    else
+    {
+        Results.NotFound();
+    }
+});
 
 app.MapDelete("/todos/{id}", async (int id, SqliteConnection db) =>
-    await db.ExecuteAsync("DELETE FROM Todos WHERE Id = @id", new { id }) == 1
-        ? Results.NoContent()
-        : Results.NotFound());
+{
+    if (await db.ExecuteAsync("DELETE FROM Todos WHERE Id = @id", new { id }) == 1)
+    {
+        Results.NoContent();
+    }
+    else
+    {
+        Results.NotFound();
+    }
+});
 
 app.MapDelete("/todos/delete-all", async (SqliteConnection db) =>
     Results.Ok(await db.ExecuteAsync("DELETE FROM Todos")));
