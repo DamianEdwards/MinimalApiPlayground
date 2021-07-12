@@ -81,7 +81,7 @@ Task EnsureDb(string connectionString)
     var sql = $@"CREATE TABLE IF NOT EXISTS Todos (
                   {nameof(Todo.Id)} INTEGER PRIMARY KEY AUTOINCREMENT,
                   {nameof(Todo.Title)} TEXT NOT NULL,
-                  {nameof(Todo.IsComplete)} BOOL DEFAULT FALSE
+                  {nameof(Todo.IsComplete)} INTEGER DEFAULT 0 NOT NULL CHECK({nameof(Todo.IsComplete)} IN (0, 1))
                 );";
     return db.ExecuteAsync(sql);
 }
