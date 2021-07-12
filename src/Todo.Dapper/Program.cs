@@ -4,12 +4,12 @@ using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScoped<SqliteConnection>(_ => new SqliteConnection("Data Source=todos.db"));
+var connectionString = "Data Source=todos.db";
+builder.Services.AddScoped<SqliteConnection>(_ => new SqliteConnection(connectionString));
 
 var app = builder.Build();
 
-using IServiceScope scope = app.Services.CreateScope();
-await EnsureDb(scope.ServiceProvider.GetRequiredService<SqliteConnection>());
+await EnsureDb(connectionString);
 
 if (app.Environment.IsDevelopment())
 {
@@ -75,8 +75,9 @@ app.MapDelete("/todos/delete-all", async (SqliteConnection db) =>
 
 app.Run();
 
-Task EnsureDb(SqliteConnection db)
+Task EnsureDb(string connectionString)
 {
+    using var db = new SqliteConnection(connectionString);
     var sql = $@"CREATE TABLE IF NOT EXISTS Todos (
                   {nameof(Todo.Id)} INTEGER PRIMARY KEY AUTOINCREMENT,
                   {nameof(Todo.Title)} TEXT NOT NULL,
