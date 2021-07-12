@@ -10,7 +10,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		nuget.config = nuget.config
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Todo.Dapper", "src\Todo.Dapper\Todo.Dapper.csproj", "{CCB44C1C-AFAE-4A1C-8FFC-C2EF59A11C34}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Todo.Dapper", "src\Todo.Dapper\Todo.Dapper.csproj", "{CCB44C1C-AFAE-4A1C-8FFC-C2EF59A11C34}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Todo.EFCore", "src\Todo.EFCore\Todo.EFCore.csproj", "{86F92BD2-A904-45C2-A7EC-E14B0C8803A6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,6 +28,10 @@ Global
 		{CCB44C1C-AFAE-4A1C-8FFC-C2EF59A11C34}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CCB44C1C-AFAE-4A1C-8FFC-C2EF59A11C34}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CCB44C1C-AFAE-4A1C-8FFC-C2EF59A11C34}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86F92BD2-A904-45C2-A7EC-E14B0C8803A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86F92BD2-A904-45C2-A7EC-E14B0C8803A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86F92BD2-A904-45C2-A7EC-E14B0C8803A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86F92BD2-A904-45C2-A7EC-E14B0C8803A6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
