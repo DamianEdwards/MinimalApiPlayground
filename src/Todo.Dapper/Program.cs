@@ -29,9 +29,10 @@ app.MapGet("/todos/incomplete", async (SqliteConnection db) =>
     await db.QueryAsync<Todo>("SELECT * FROM Todos WHERE IsComplete = false"));
 
 app.MapGet("/todos/{id}", async (int id, SqliteConnection db) =>
-    await db.QuerySingleOrDefaultAsync<Todo>("SELECT * FROM Todos WHERE Id = @id", new { id }) is Todo todo
-        ? Results.Ok(todo)
-        : Results.NotFound());
+    await db.QuerySingleOrDefaultAsync<Todo>("SELECT * FROM Todos WHERE Id = @id", new { id })
+        is Todo todo
+            ? Results.Ok(todo)
+            : Results.NotFound());
 
 app.MapPost("/todos", async (Todo todo, SqliteConnection db) =>
 {

@@ -29,9 +29,10 @@ app.MapGet("/todos/incomplete", async (TodoDb db) =>
     await db.Todos.Where(t => !t.IsComplete).ToListAsync());
 
 app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
-    await db.Todos.FindAsync(id) is Todo todo
-        ? Results.Ok(todo)
-        : Results.NotFound());
+    await db.Todos.FindAsync(id)
+        is Todo todo
+            ? Results.Ok(todo)
+            : Results.NotFound());
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
 {
