@@ -43,14 +43,17 @@ app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500
 app.MapGet("/todos/sample", () => new[] {
         new Todo { Id = 1, Title = "Do this" },
         new Todo { Id = 2, Title = "Do this too" }
-    });
+    })
+   .WithName("GetSampleTodos");
 
 app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync())
    .WithName("GetAllTodos");
 
-app.MapGet("/todos/incomplete", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync());
+app.MapGet("/todos/incompleted", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync())
+   .WithName("GetIncompletedTodos");
 
-app.MapGet("/todos/complete", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync());
+app.MapGet("/todos/completed", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync())
+   .WithName("GetCompletedTodos");
 
 app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
     {
@@ -60,7 +63,8 @@ app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
                 : Results.NotFound();
     })
     .Produces<Todo>()
-    .ProducesNotFound();
+    .ProducesNotFound()
+    .WithName("GetTodoById");
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     {
@@ -73,7 +77,8 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
         return Results.Created($"/todos/{todo.Id}", todo);
     })
     .ProducesValidationProblem()
-    .Produces<Todo>();
+    .Produces<Todo>()
+    .WithName("AddTodo");
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     {
@@ -93,7 +98,8 @@ app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     })
     .ProducesValidationProblem()
     .ProducesNotFound()
-    .ProducesNoContent();
+    .ProducesNoContent()
+    .WithName("UpdateTodo");
 
 app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
     {
@@ -109,7 +115,8 @@ app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
         }
     })
     .ProducesNoContent()
-    .ProducesNotFound();
+    .ProducesNotFound()
+    .WithName("CompleteTodo");
 
 app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
     {
@@ -125,7 +132,8 @@ app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
         }
     })
     .ProducesNoContent()
-    .ProducesNotFound(); ;
+    .ProducesNotFound()
+    .WithName("UncompleteTodo");
 
 app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
     {
@@ -139,7 +147,8 @@ app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
         return Results.NotFound();
     })
     .Produces<Todo>()
-    .ProducesNotFound();
+    .ProducesNotFound()
+    .WithName("DeleteTodo");
 
 app.MapDelete("/todos/delete-all", async (TodoDb db) =>
     {
@@ -147,7 +156,8 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
 
         return Results.Ok(rowCount);
     })
-    .Produces<int>();
+    .Produces<int>()
+    .WithName("DeleteAllTodos");
 
 app.MapPost("/todolist", (TodoList list) =>
     {
@@ -167,7 +177,8 @@ app.MapPost("/todolist", (TodoList list) =>
         return Results.Ok();
     })
     .ProducesValidationProblem()
-    .ProducesOk();
+    .ProducesOk()
+    .WithName("AddTodoList");
 
 app.Run();
 

@@ -30,7 +30,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
-            //options.CustomOperationIds(BuildOperationId);
+            options.CustomOperationIds(BuildOperationId);
             options.SwaggerDoc(Version, new OpenApiInfo { Title = hostingEnvironment.ApplicationName, Version = Version });
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
@@ -71,17 +71,19 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
 
     private static string? BuildOperationId(ApiDescription api)
     {
+        var httpMethod = api.HttpMethod;
         var controller = api.ActionDescriptor.RouteValues["controller"];
         var displayName = api.ActionDescriptor.DisplayName;
+        
         // Following line relies on https://github.com/dotnet/aspnetcore/pull/34065
-        var endpointName = api.ActionDescriptor.EndpointMetadata.FirstOrDefault(m => m is EndpointNameMetadata) as EndpointNameMetadata;
-        var httpMethod = api.HttpMethod;
+        var endpointNameMetadata = api.ActionDescriptor.EndpointMetadata.FirstOrDefault(m => m is EndpointNameMetadata) as EndpointNameMetadata;
 
-        if (!string.IsNullOrEmpty(endpointName?.EndpointName))
+        if (!string.IsNullOrEmpty(endpointNameMetadata?.EndpointName))
         {
-            return endpointName.EndpointName;
+            return endpointNameMetadata.EndpointName;
         }
 
-        return null;
+        // Swashbuckle default: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/95cb4d370e08e54eb04cf14e7e6388ca974a686e/src/Swashbuckle.AspNetCore.SwaggerGen/SwaggerGenerator/SwaggerGeneratorOptions.cs#L64
+        return api.ActionDescriptor.AttributeRouteInfo?.Name;
     }
 }
