@@ -22,7 +22,9 @@ else
 // Issues with UseExceptionHandler() if this isn't explicitly called: https://github.com/dotnet/aspnetcore/issues/34146
 app.UseRouting();
 
-app.MapGet("/", () => "Hello World");
+app.MapGet("/", () => "Hello World")
+   .WithMetadata(new EndpointNameMetadata("HelloWorldApi"));
+
 app.MapGet("/hello", () => new { Hello = "World" });
 
 app.MapGet("/html", (HttpContext context) => AppResults.Html(

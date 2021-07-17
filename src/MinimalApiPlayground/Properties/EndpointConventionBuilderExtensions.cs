@@ -9,6 +9,8 @@ public static class EndpointConventionBuilderExtensions
 {
     static readonly string[] NoHttpMethods = new[] { "[none]" };
 
+    // Once Swashbuckle issue is fixed this will set operation id in the swagger too
+    // https://github.com/domaindrivendev/Swashbuckle.AspNetCore/issues/2165
     public static IEndpointConventionBuilder WithName(this IEndpointConventionBuilder builder, string name)
     {
         //builder.Add(eb =>
@@ -19,8 +21,8 @@ public static class EndpointConventionBuilderExtensions
         //        Debug.WriteLine($"httpMethod.HttpMethods = {string.Join(',', httpMethodMetadata?.HttpMethods ?? NoHttpMethods)}");
         //        Debug.WriteLine($"methodInfo.Name = {methodInfo?.Name}");
         //    });
-        //builder.WithMetadata(new RouteAttribute(null) { Name = name });
         //builder.WithMetadata(new RouteNameMetadata(name));
+
         builder.WithMetadata(new EndpointNameMetadata(name));
 
         return builder;
