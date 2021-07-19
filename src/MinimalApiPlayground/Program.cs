@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -40,7 +42,7 @@ app.MapGet("/html", (HttpContext context) => AppResults.Html(
 app.MapGet("/throw", () => { throw new Exception("uh oh"); });
 
 app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
-   .ProducesProblem(StatusCodes.Status500InternalServerError);
+   .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
 app.MapGet("/todos/sample", () => new[] {
         new Todo { Id = 1, Title = "Do this" },
@@ -64,9 +66,9 @@ app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
                 ? Results.Ok(todo)
                 : Results.NotFound();
     })
+    .WithName("GetTodoById")
     .Produces<Todo>()
-    .ProducesNotFound()
-    .WithName("GetTodoById");
+    .Produces(StatusCodes.Status404NotFound);
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     {
@@ -78,30 +80,47 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
 
         return Results.Created($"/todos/{todo.Id}", todo);
     })
-    .ProducesValidationProblem()
-    .Produces<Todo>()
-    .WithName("AddTodo");
+    .WithName("AddTodo")
+    .Produces<HttpValidationProblemDetails>()
+    .Produces<Todo>(StatusCodes.Status201Created);
+
+// With attributes
+//app.MapPost("/todos",
+//    [EndpointName("AddTodo")]
+//    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+//    [ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
+//    async (Todo todo, TodoDb db) =>
+//    {
+//        if (!MinimalValidation.TryValidate(todo, out var errors))
+//            return Results.ValidationProblem(errors);
+
+//        db.Todos.Add(todo);
+//        await db.SaveChangesAsync();
+
+//        return Results.Created($"/todos/{todo.Id}", todo);
+//    });
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     {
         if (!MinimalValidation.TryValidate(inputTodo, out var errors))
             return Results.ValidationProblem(errors);
 
-        var todo = await db.Todos.FindAsync(id);
-
-        if (todo is null) return Results.NotFound();
-
-        todo.Title = inputTodo.Title;
-        todo.IsComplete = inputTodo.IsComplete;
-
-        await db.SaveChangesAsync();
-
-        return Results.NoContent();
+        if (await db.Todos.FindAsync(id) is Todo todo)
+        {
+            todo.Title = inputTodo.Title;
+            todo.IsComplete = inputTodo.IsComplete;
+            await db.SaveChangesAsync();
+            return Results.NoContent();
+        }
+        else
+        {
+            return Results.NotFound();
+        }
     })
-    .ProducesValidationProblem()
-    .ProducesNotFound()
-    .ProducesNoContent()
-    .WithName("UpdateTodo");
+    .WithName("UpdateTodo")
+    .Produces<HttpValidationProblemDetails>()
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status404NotFound);
 
 app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
     {
@@ -116,9 +135,9 @@ app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
             return Results.NotFound();
         }
     })
-    .ProducesNoContent()
-    .ProducesNotFound()
-    .WithName("CompleteTodo");
+    .WithName("CompleteTodo")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status404NotFound);
 
 app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
     {
@@ -133,9 +152,9 @@ app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
             return Results.NotFound();
         }
     })
-    .ProducesNoContent()
-    .ProducesNotFound()
-    .WithName("UncompleteTodo");
+    .WithName("UncompleteTodo")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status404NotFound);
 
 app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
     {
@@ -148,9 +167,9 @@ app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
 
         return Results.NotFound();
     })
+    .WithName("DeleteTodo")
     .Produces<Todo>()
-    .ProducesNotFound()
-    .WithName("DeleteTodo");
+    .Produces(StatusCodes.Status404NotFound);
 
 app.MapDelete("/todos/delete-all", async (TodoDb db) =>
     {
@@ -158,29 +177,8 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
 
         return Results.Ok(rowCount);
     })
-    .Produces<int>()
-    .WithName("DeleteAllTodos");
-
-app.MapPost("/todolist", (TodoList list) =>
-    {
-        if (!MinimalValidation.TryValidate(list, out var errors))
-            return Results.ValidationProblem(errors);
-
-        return Results.Ok();
-    })
-    .ProducesValidationProblem()
-    .ProducesOk();
-
-    app.MapPost("/todocycle", (TodoList list) =>
-    {
-        if (!MinimalValidation.TryValidate(list, out var errors))
-            return Results.ValidationProblem(errors);
-
-        return Results.Ok();
-    })
-    .ProducesValidationProblem()
-    .ProducesOk()
-    .WithName("AddTodoList");
+    .WithName("DeleteAllTodos")
+    .Produces<int>();
 
 app.Run();
 
@@ -189,12 +187,6 @@ class Todo
     public int Id { get; set; }
     [Required] public string? Title { get; set; }
     public bool IsComplete { get; set; }
-}
-
-class TodoList
-{
-    [Required] public string? Title { get; set; }
-    public ICollection<Todo>? Todos { get; set; }
 }
 
 class TodoDb : DbContext

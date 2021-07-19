@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
-using System.Reflection;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace Microsoft.AspNetCore.Http;
 
@@ -9,62 +6,51 @@ public static class EndpointConventionBuilderExtensions
 {
     static readonly string[] NoHttpMethods = new[] { "[none]" };
 
-    // Once Swashbuckle issue is fixed this will set operation id in the swagger too
-    // https://github.com/domaindrivendev/Swashbuckle.AspNetCore/issues/2165
+    /// <summary>
+    /// Adds an EndpointNameMetadata item to the Metadata for all builders produced by builder.
+    /// </summary>
+    /// <typeparam name="TBuilder"></typeparam>
+    /// <param name="builder"></param>
+    /// <param name="name"></param>
+    /// <returns></returns>
     public static IEndpointConventionBuilder WithName(this IEndpointConventionBuilder builder, string name)
     {
-        //builder.Add(eb =>
-        //    {
-        //        var httpMethodMetadata = eb.Metadata.FirstOrDefault(i => i is HttpMethodMetadata) as HttpMethodMetadata;
-        //        var methodInfo = eb.Metadata.FirstOrDefault(i => i is MethodInfo) as MethodInfo;
-
-        //        Debug.WriteLine($"httpMethod.HttpMethods = {string.Join(',', httpMethodMetadata?.HttpMethods ?? NoHttpMethods)}");
-        //        Debug.WriteLine($"methodInfo.Name = {methodInfo?.Name}");
-        //    });
-        //builder.WithMetadata(new RouteNameMetadata(name));
+        // Once Swashbuckle issue is fixed this will set operationId in the swagger too
+        // https://github.com/domaindrivendev/Swashbuckle.AspNetCore/issues/2165
 
         builder.WithMetadata(new EndpointNameMetadata(name));
 
         return builder;
     }
 
-    public static IEndpointConventionBuilder ProducesNotFound(this IEndpointConventionBuilder builder)
+    public static IEndpointConventionBuilder Produces<TResponse>(this IEndpointConventionBuilder builder,
+        int statusCode = StatusCodes.Status200OK,
+        string? contentType = "application/json")
     {
-        return builder.WithMetadata(new ProducesResponseTypeAttribute(StatusCodes.Status404NotFound));
+        return Produces(builder, statusCode, typeof(TResponse), contentType);
     }
 
-    public static IEndpointConventionBuilder ProducesProblem(this IEndpointConventionBuilder builder, int statusCode = StatusCodes.Status400BadRequest)
+    public static IEndpointConventionBuilder Produces(this IEndpointConventionBuilder builder,
+        int statusCode = StatusCodes.Status200OK,
+        Type? responseType = null,
+        string? contentType = "application/json")
     {
-        return builder.WithMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), statusCode));
-    }
+        if (responseType is Type)
+        {
+            builder.WithMetadata(new ProducesResponseTypeAttribute(responseType, statusCode));
+        }
+        else
+        {
+            builder.WithMetadata(new ProducesResponseTypeAttribute(statusCode));
+        }
 
-    public static IEndpointConventionBuilder ProducesValidationProblem(this IEndpointConventionBuilder builder)
-    {
-        return builder.WithMetadata(new ProducesResponseTypeAttribute(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest));
-    }
+        if (!string.IsNullOrEmpty(contentType))
+        {
+            // TODO: Allow multiple content types?
+            // TODO: Content type per status code/response type? e.g. https://github.com/domaindrivendev/Swashbuckle.AspNetCore/issues/1691
+            builder.WithMetadata(new ProducesAttribute(contentType));
+        }
 
-    public static IEndpointConventionBuilder ProducesOk(this IEndpointConventionBuilder builder)
-    {
-        return Produces(builder, StatusCodes.Status200OK);
-    }
-
-    public static IEndpointConventionBuilder ProducesOk<TBody>(this IEndpointConventionBuilder builder)
-    {
-        return Produces<TBody>(builder, StatusCodes.Status200OK);
-    }
-
-    public static IEndpointConventionBuilder ProducesNoContent(this IEndpointConventionBuilder builder)
-    {
-        return Produces(builder, StatusCodes.Status204NoContent);
-    }
-
-    public static IEndpointConventionBuilder Produces<TBody>(this IEndpointConventionBuilder builder, int statusCode = StatusCodes.Status200OK)
-    {
-        return builder.WithMetadata(new ProducesResponseTypeAttribute(typeof(TBody), statusCode));
-    }
-
-    public static IEndpointConventionBuilder Produces(this IEndpointConventionBuilder builder, int statusCode)
-    {
-        return builder.WithMetadata(new ProducesResponseTypeAttribute(statusCode));
+        return builder;
     }
 }

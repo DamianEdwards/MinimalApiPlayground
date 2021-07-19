@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 static class Program2
@@ -36,5 +37,33 @@ static class Program2
 
             return AppResults.CreatedAt(routes.GetTodoById, new { id = todo.Id }, todo);
         });
+
+        app.MapPost("/todolist", (TodoList list) =>
+        {
+            if (!MinimalValidation.TryValidate(list, out var errors))
+                return Results.ValidationProblem(errors);
+
+            return Results.Ok();
+        })
+        .WithName("AddTodoList")
+        .Produces(StatusCodes.Status200OK)
+        .Produces<HttpValidationProblemDetails>();
+
+        app.MapPost("/todocycle", (TodoList list) =>
+        {
+            if (!MinimalValidation.TryValidate(list, out var errors))
+                return Results.ValidationProblem(errors);
+
+            return Results.Ok();
+        })
+        .WithName("AddTodoList")
+        .Produces(StatusCodes.Status200OK)
+        .Produces<HttpValidationProblemDetails>();
+    }
+
+    class TodoList
+    {
+        [Required] public string? Title { get; set; }
+        public ICollection<Todo>? Todos { get; set; }
     }
 }
