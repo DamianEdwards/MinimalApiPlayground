@@ -31,6 +31,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         services.AddSwaggerGen(options =>
         {
             options.CustomOperationIds(BuildOperationId);
+            options.DocInclusionPredicate(IncludeApiInDoc);
             options.SwaggerDoc(Version, new OpenApiInfo { Title = hostingEnvironment.ApplicationName, Version = Version });
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
@@ -85,5 +86,17 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
 
         // Swashbuckle default: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/95cb4d370e08e54eb04cf14e7e6388ca974a686e/src/Swashbuckle.AspNetCore.SwaggerGen/SwaggerGenerator/SwaggerGeneratorOptions.cs#L64
         return api.ActionDescriptor.AttributeRouteInfo?.Name;
+    }
+
+    private static bool IncludeApiInDoc(string documentName, ApiDescription apiDescription)
+    {
+        var endpointIgnoreMetadata = apiDescription.ActionDescriptor.EndpointMetadata.FirstOrDefault(m => m is IEndpointIgnoreMetadata);
+
+        if (endpointIgnoreMetadata is IEndpointIgnoreMetadata)
+        {
+            return false;
+        }
+
+        return string.IsNullOrEmpty(apiDescription.GroupName) || string.Equals(apiDescription.GroupName, documentName, StringComparison.OrdinalIgnoreCase);
     }
 }

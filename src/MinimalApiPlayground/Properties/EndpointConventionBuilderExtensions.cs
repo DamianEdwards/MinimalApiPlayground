@@ -5,7 +5,7 @@ namespace Microsoft.AspNetCore.Http;
 
 public static class OpenApiEndpointConventionBuilderExtensions
 {
-    private static readonly string _randomGroupName = Guid.NewGuid().ToString();
+    private static readonly EndpointIgnoreMetadata IgnoreMetadata = new();
 
     /// <summary>
     /// Adds an EndpointNameMetadata item to the Metadata for all endpoints produced by the builder.<br />
@@ -53,7 +53,8 @@ public static class OpenApiEndpointConventionBuilderExtensions
         // See https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/master/src/Swashbuckle.AspNetCore.SwaggerGen/SwaggerGenerator/SwaggerGeneratorOptions.cs#L59
         // We may instead want to add a more first-class piece of metadata to indicate the endpoint should be ignored from metadata readers,
         // e.g. https://github.com/dotnet/aspnetcore/issues/34068, which of course will require updating Swashbuckle to honor this too.
-        WithGroupName(builder, _randomGroupName);
+        builder.WithMetadata(IgnoreMetadata);
+
         return builder;
     }
 
