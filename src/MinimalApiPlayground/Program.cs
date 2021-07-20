@@ -39,16 +39,18 @@ app.MapGet("/html", (HttpContext context) => AppResults.Html(
 </body>
 </html>"));
 
-app.MapGet("/throw", () => { throw new Exception("uh oh"); });
+app.MapGet("/throw", () => { throw new Exception("uh oh"); })
+   .Ignore();
 
 app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
-   .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+   .ProducesProblem()
+   .Ignore();
 
 app.MapGet("/todos/sample", () => new[] {
         new Todo { Id = 1, Title = "Do this" },
         new Todo { Id = 2, Title = "Do this too" }
     })
-   .WithName("GetSampleTodos");
+   .Ignore();
 
 app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync())
    .WithName("GetAllTodos");
@@ -78,27 +80,27 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.Created($"/todos/{todo.Id}", todo);
+        return Results.CreatedAtRoute("GetTodoById", new { todo.Id }, todo);
     })
     .WithName("AddTodo")
-    .Produces<HttpValidationProblemDetails>()
+    .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 
-// With attributes
-//app.MapPost("/todos",
-//    [EndpointName("AddTodo")]
-//    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-//    [ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
-//    async (Todo todo, TodoDb db) =>
-//    {
-//        if (!MinimalValidation.TryValidate(todo, out var errors))
-//            return Results.ValidationProblem(errors);
+// Example of adding the above endpoint but using attributes to describe it instead
+app.MapPost("/todos-attr-desc",
+    [EndpointName("AddTodoWithAttr")]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
+    async (Todo todo, TodoDb db) =>
+    {
+        if (!MinimalValidation.TryValidate(todo, out var errors))
+            return Results.ValidationProblem(errors);
 
-//        db.Todos.Add(todo);
-//        await db.SaveChangesAsync();
+        db.Todos.Add(todo);
+        await db.SaveChangesAsync();
 
-//        return Results.Created($"/todos/{todo.Id}", todo);
-//    });
+        return Results.Created($"/todos/{todo.Id}", todo);
+    });
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     {
@@ -118,7 +120,7 @@ app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
         }
     })
     .WithName("UpdateTodo")
-    .Produces<HttpValidationProblemDetails>()
+    .ProducesValidationProblem()
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 
