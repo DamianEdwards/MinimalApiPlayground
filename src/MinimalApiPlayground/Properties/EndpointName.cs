@@ -1,12 +1,14 @@
 ﻿namespace Microsoft.AspNetCore.Routing;
 
 /// <summary>
-/// Declares the name for this endpoint method or delegate.<br />
-/// The name is used to lookup the endpoint during link generation and as an operationId when generating OpenAPI documentation.<br />
-/// The name must be unique per endpoint.
+/// Specifies the endpoint name in Microsoft.AspNetCore.Http.Endpoint.Metadata.
 /// </summary>
+/// <remarks>
+/// Endpoint names must be unique within an application, and can be used to unambiguously
+/// identify a desired endpoint for URI generation using Microsoft.AspNetCore.Routing.LinkGenerator.
+/// </remarks>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Delegate, Inherited = false, AllowMultiple = false)]
-sealed class EndpointNameAttribute : Attribute, IEndpointNameMetadata
+public sealed class EndpointNameAttribute : Attribute, IEndpointNameMetadata
 {
     /// <summary>
     /// Initializes an instance of the EndpointNameAttribute.
