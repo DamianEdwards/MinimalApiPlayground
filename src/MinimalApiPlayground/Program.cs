@@ -87,20 +87,21 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     .Produces<Todo>(StatusCodes.Status201Created);
 
 // Example of adding the above endpoint but using attributes to describe it instead
-app.MapPost("/todos-attr-desc",
-    [EndpointName("AddTodoWithAttr")]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
-    async (Todo todo, TodoDb db) =>
-    {
-        if (!MinimalValidation.TryValidate(todo, out var errors))
-            return Results.ValidationProblem(errors);
+app.MapPost("/todos-local-func", AddTodoFunc);
 
-        db.Todos.Add(todo);
-        await db.SaveChangesAsync();
+// EndpointName set automatically to name of method
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
+async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
+{
+    if (!MinimalValidation.TryValidate(todo, out var errors))
+        return Results.ValidationProblem(errors);
 
-        return Results.Created($"/todos/{todo.Id}", todo);
-    });
+    db.Todos.Add(todo);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/todos/{todo.Id}", todo);
+}
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     {
