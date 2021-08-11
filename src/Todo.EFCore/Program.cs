@@ -9,11 +9,12 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 var app = builder.Build();
 
-await EnsureDb(connectionString);
+await EnsureDb(connectionString, app.Logger);
 
-if (app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();
+    app.UseExceptionHandler("/error");
+    app.UseRouting();
 }
 
 app.MapGet("/", () => "Hello World!");
@@ -107,11 +108,13 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
 
 app.Run();
 
-Task EnsureDb(string connectionString)
+async Task EnsureDb(string connectionString, ILogger logger)
 {
+    logger.LogInformation("Ensuring database exists at connection string '{connectionString}'", connectionString);
+
     var options = new DbContextOptionsBuilder<TodoDb>().UseSqlite(connectionString).Options;
     using var db = new TodoDb(options);
-    return db.Database.MigrateAsync();
+    await db.Database.MigrateAsync();
 }
 
 class Todo

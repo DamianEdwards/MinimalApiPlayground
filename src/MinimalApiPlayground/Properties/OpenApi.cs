@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -82,7 +83,9 @@ public class ConsumesRequestTypeRequestFilter : IRequestBodyFilter, IOperationFi
 
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        var consumesMetdata = context.ApiDescription.ActionDescriptor.EndpointMetadata
+        var endpointMetadata = context.ApiDescription.ActionDescriptor.EndpointMetadata;
+
+        var consumesMetdata = endpointMetadata
                                   .Where(a => a as IApiRequestMetadataProvider2 != null)
                                   .Select(a => (IApiRequestMetadataProvider2)a)
                                   .ToList();
@@ -107,6 +110,24 @@ public class ConsumesRequestTypeRequestFilter : IRequestBodyFilter, IOperationFi
                 foreach (var mediaType in mediaTypes)
                 {
                     operation.RequestBody.Content[mediaType] = new() { Schema = requestSchema };
+                }
+            }
+        }
+
+        var formFileParams = endpointMetadata.OfType<ApiParameterDescription>()
+                                              .Where(pd => pd.Source == BindingSource.FormFile)
+                                              .ToList();
+        
+        if (formFileParams.Count > 0)
+        {
+            operation.RequestBody = new();
+            operation.RequestBody.Content["multipart/form-data"] = new() {  };
+
+            foreach (var pd in formFileParams)
+            {
+                if (!operation.Parameters.Any(p => string.Equals(p.Name, pd.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    operation.Parameters.Add(new() { Name = pd.Name, Style = ParameterStyle.Form });
                 }
             }
         }

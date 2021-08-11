@@ -11,10 +11,9 @@ public class ConsumesRequestTypeAttribute : ConsumesAttribute, IApiRequestMetada
     }
 
     public ConsumesRequestTypeAttribute(Type type)
-        : base("")
+        : base("application/json")
     {
         Type = type ?? throw new ArgumentNullException(nameof(type));
-        ContentTypes = new MediaTypeCollection();
     }
 
     public Type? Type { get; set; }

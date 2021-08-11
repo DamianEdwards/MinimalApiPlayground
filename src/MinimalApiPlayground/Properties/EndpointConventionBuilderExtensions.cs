@@ -24,11 +24,19 @@ public static class EndpointConventionBuilderExtensions
         builder.WithMetadata(
             contentType is object
                 ? new ConsumesRequestTypeAttribute(contentType, otherContentTypes)
-                {
-                    Type = requestType
-                }
+                    {
+                        Type = requestType
+                    }
                 : new ConsumesRequestTypeAttribute(requestType)
         );
+
+        return builder;
+    }
+
+    public static MinimalActionEndpointConventionBuilder AcceptsFormFile(this MinimalActionEndpointConventionBuilder builder, string fieldName)
+    {
+        builder.WithMetadata(new ConsumesRequestTypeAttribute("multipart/form-data"));
+        builder.WithMetadata(new ApiParameterDescription { Name = fieldName, Source = Mvc.ModelBinding.BindingSource.FormFile });
 
         return builder;
     }

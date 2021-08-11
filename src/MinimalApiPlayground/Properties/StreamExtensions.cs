@@ -15,8 +15,8 @@ public static class StreamExtensions
     {
         // This is terrible code, don't do this, seriously
         var buffer = new byte[contentLength ?? 1024];
-        await stream.ReadAsync(buffer);
-        
+        var read = await stream.ReadAsync(buffer);
+
         var xml = new XmlSerializer(typeof(T));
         using var ms = new MemoryStream(buffer);
         T? result = (T)xml.Deserialize(ms)!;

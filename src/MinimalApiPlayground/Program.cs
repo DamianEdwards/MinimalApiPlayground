@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,10 +14,17 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
+    app.UseRouting();
 }
 
-app.MapGet("/", () => "Hello World")
-   .WithMetadata(new EndpointNameAttribute("HelloWorldApi"));
+app.MapGet("/throw", () => { throw new Exception("uh oh"); })
+   .ExcludeFromDescription();
+
+app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
+   .ExcludeFromDescription();
+
+app.MapGet("/", (int? id) => "Hello World!")
+   .WithName("HelloWorldApi");
 
 app.MapGet("/hello", () => new { Hello = "World" });
 
@@ -31,12 +37,6 @@ app.MapGet("/html", (HttpContext context) => AppResults.Html(
 <p>The time on the server is {DateTime.Now.ToString("O")}</p>
 </body>
 </html>"))
-   .ExcludeFromDescription();
-
-app.MapGet("/throw", () => { throw new Exception("uh oh"); })
-   .ExcludeFromDescription();
-
-app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
    .ExcludeFromDescription();
 
 app.MapGet("/todos/sample", () => new[] {
@@ -81,10 +81,44 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 
+// This doesn't work yet, it's a WIP :)
+app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
+    {
+        if (!request.HasFormContentType)
+            return Results.BadRequest();
+
+        var form = await request.ReadFormAsync();
+        if (form.Files.Count != 1)
+        {
+            return Results.BadRequest();
+        }
+
+        var file = form.Files[0];
+        if (file.ContentDisposition != "application/json")
+            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+
+        var todo = await System.Text.Json.JsonSerializer.DeserializeAsync<Todo>(file.OpenReadStream());
+
+        if (todo is not Todo)
+            return Results.BadRequest();
+
+        if (!MinimalValidation.TryValidate(todo, out var errors))
+            return Results.ValidationProblem(errors);
+
+        db.Todos.Add(todo);
+        await db.SaveChangesAsync();
+
+        return Results.CreatedAtRoute("GetTodoById", new { todo.Id }, todo);
+    })
+    .WithName("AddTodoFromFile")
+    .AcceptsFormFile("todofile")
+    .ProducesValidationProblem()
+    .Produces<Todo>(StatusCodes.Status201Created);
+
 // Example of manually supporting more than JSON for input/output
 app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
     {
-        string contentType = request.Headers["Content-Type"];
+        string contentType = request.Headers.ContentType;
 
         var todo = contentType switch
         {
@@ -115,7 +149,7 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
 // Example of adding the above endpoint but using attributes to describe it instead
 app.MapPost("/todos-local-func", AddTodoFunc);
 
-// EndpointName set automatically to name of method
+// EndpointName set automatically to name of method (waiting on PR https://github.com/dotnet/aspnetcore/pull/35069)
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
 async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
