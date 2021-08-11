@@ -4,7 +4,7 @@ using Dapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Database") ?? "Data Source=todos.db";
+var connectionString = builder.Configuration.GetConnectionString("TodoDb") ?? "Data Source=todos.db";
 builder.Services.AddScoped<SqliteConnection>(_ => new SqliteConnection(connectionString));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o => o.SwaggerDoc("v1", new() { Title = "TodoApi", Version = "v1" }));

@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = "Data Source=todos.db";
-builder.Services.AddDbContext<TodoDb>(options => options.UseSqlite(connectionString));
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+var connectionString = builder.Configuration.GetConnectionString("TodoDb") ?? "Data Source=todos.db";
+builder.Services.AddSqlite<TodoDb>(connectionString)
+                .AddDatabaseDeveloperPageExceptionFilter();
 
 var app = builder.Build();
 
