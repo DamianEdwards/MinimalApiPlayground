@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 [assembly:HostingStartup(typeof(OpenApiConfiguration))]
 
@@ -37,6 +40,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
             //options.RequestBodyFilter<ConsumesRequestTypeRequestFilter>();
             options.OperationFilter<ConsumesRequestTypeRequestFilter>();
             options.TagActionsBy(TagsSelector);
+            options.CustomSchemaIds(SchemaIdSelector);
             options.SwaggerDoc(Version, new OpenApiInfo { Title = hostingEnvironment.ApplicationName, Version = Version });
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
@@ -99,6 +103,19 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         }
 
         return tags;
+    }
+
+    private static string SchemaIdSelector(Type type)
+    {
+        if (type.CustomAttributes.Any(a => a.AttributeType == typeof(CompilerGeneratedAttribute)))
+        {
+            var match = Regex.Match(type.Name, @"AnonymousType\d+");
+            return match.Success
+                ? $"{type.Assembly.GetName().Name}.{match.Value}"
+                : type.Name;
+        }
+
+        return type.Name;
     }
 }
 
