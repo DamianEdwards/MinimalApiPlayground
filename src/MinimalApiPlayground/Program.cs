@@ -1,30 +1,24 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Data Source=todos.db";
 
-builder.Services.AddSqlite<TodoDb>(connectionString);
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.AddSqlite<TodoDb>(connectionString)
+                .AddDatabaseDeveloperPageExceptionFilter();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseDeveloperExceptionPage();
-}
-else
+if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
 }
 
-// Issues with UseExceptionHandler() if this isn't explicitly called: https://github.com/dotnet/aspnetcore/issues/34146
-app.UseRouting();
-
 app.MapGet("/", () => "Hello World")
-   .WithMetadata(new EndpointNameMetadata("HelloWorldApi"));
+   .WithMetadata(new EndpointNameAttribute("HelloWorldApi"));
 
 app.MapGet("/hello", () => new { Hello = "World" });
 
@@ -36,29 +30,31 @@ app.MapGet("/html", (HttpContext context) => AppResults.Html(
 <h1>Hello World</h1>
 <p>The time on the server is {DateTime.Now.ToString("O")}</p>
 </body>
-</html>"));
+</html>"))
+   .ExcludeFromDescription();
 
 app.MapGet("/throw", () => { throw new Exception("uh oh"); })
-   .Ignore();
+   .ExcludeFromDescription();
 
 app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
-   .ProducesProblem()
-   .Ignore();
+   .ExcludeFromDescription();
 
 app.MapGet("/todos/sample", () => new[] {
         new Todo { Id = 1, Title = "Do this" },
         new Todo { Id = 2, Title = "Do this too" }
     })
-   .Ignore();
+   .ExcludeFromDescription();
 
 app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync())
    .WithName("GetAllTodos");
 
 app.MapGet("/todos/incompleted", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync())
-   .WithName("GetIncompletedTodos");
+   .WithName("GetIncompletedTodos")
+   .Produces<Todo[]>();
 
 app.MapGet("/todos/completed", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync())
-   .WithName("GetCompletedTodos");
+   .WithName("GetCompletedTodos")
+   .Produces<List<Todo>>();
 
 app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
     {
@@ -68,7 +64,7 @@ app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
                 : Results.NotFound();
     })
     .WithName("GetTodoById")
-    .Produces<Todo>()
+    .Produces<List<Todo>>()
     .Produces(StatusCodes.Status404NotFound);
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
@@ -84,6 +80,37 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     .WithName("AddTodo")
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
+
+// Example of manually supporting more than JSON for input/output
+app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
+    {
+        string contentType = request.Headers["Content-Type"];
+
+        var todo = contentType switch
+        {
+            "application/json" => await request.Body.ReadAsJsonAsync<Todo>(),
+            "application/xml" => await request.Body.ReadAsXmlAsync<Todo>(request.ContentLength),
+            _ => null,
+        };
+
+        if (todo is null)
+        {
+            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+        }
+
+        if (!MinimalValidation.TryValidate(todo, out var errors))
+            return Results.ValidationProblem(errors);
+
+        db.Todos.Add(todo);
+        await db.SaveChangesAsync();
+
+        return AppResults.Created(todo, contentType);
+    })
+    .WithName("AddTodoXmlOrJson")
+    .Accepts<Todo>("application/json", "application/xml")
+    .Produces(StatusCodes.Status415UnsupportedMediaType)
+    .ProducesValidationProblem()
+    .Produces<Todo>(StatusCodes.Status201Created, "application/json", "application/xml");
 
 // Example of adding the above endpoint but using attributes to describe it instead
 app.MapPost("/todos-local-func", AddTodoFunc);
@@ -184,7 +211,7 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
 
 app.Run();
 
-class Todo
+public class Todo
 {
     public int Id { get; set; }
     [Required] public string? Title { get; set; }

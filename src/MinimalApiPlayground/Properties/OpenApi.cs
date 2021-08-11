@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 [assembly:HostingStartup(typeof(OpenApiConfiguration))]
 
@@ -30,8 +32,8 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
-            options.CustomOperationIds(BuildOperationId);
-            options.DocInclusionPredicate(IncludeApiInDoc);
+            //options.RequestBodyFilter<ConsumesRequestTypeRequestFilter>();
+            options.OperationFilter<ConsumesRequestTypeRequestFilter>();
             options.SwaggerDoc(Version, new OpenApiInfo { Title = hostingEnvironment.ApplicationName, Version = Version });
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
@@ -69,34 +71,44 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
             });
         }
     }
+}
 
-    private static string? BuildOperationId(ApiDescription api)
+public class ConsumesRequestTypeRequestFilter : IRequestBodyFilter, IOperationFilter
+{
+    public void Apply(OpenApiRequestBody requestBody, RequestBodyFilterContext context)
     {
-        var httpMethod = api.HttpMethod;
-        var controller = api.ActionDescriptor.RouteValues["controller"];
-        var displayName = api.ActionDescriptor.DisplayName;
-        
-        // Following line relies on https://github.com/dotnet/aspnetcore/pull/34065
-        var endpointNameMetadata = api.ActionDescriptor.EndpointMetadata.FirstOrDefault(m => m is EndpointNameMetadata) as EndpointNameMetadata;
-
-        if (!string.IsNullOrEmpty(endpointNameMetadata?.EndpointName))
-        {
-            return endpointNameMetadata.EndpointName;
-        }
-
-        // Swashbuckle default: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/95cb4d370e08e54eb04cf14e7e6388ca974a686e/src/Swashbuckle.AspNetCore.SwaggerGen/SwaggerGenerator/SwaggerGeneratorOptions.cs#L64
-        return api.ActionDescriptor.AttributeRouteInfo?.Name;
+        throw new NotImplementedException();
     }
 
-    private static bool IncludeApiInDoc(string documentName, ApiDescription apiDescription)
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        var endpointIgnoreMetadata = apiDescription.ActionDescriptor.EndpointMetadata.FirstOrDefault(m => m is IEndpointIgnoreMetadata);
+        var consumesMetdata = context.ApiDescription.ActionDescriptor.EndpointMetadata
+                                  .Where(a => a as IApiRequestMetadataProvider2 != null)
+                                  .Select(a => (IApiRequestMetadataProvider2)a)
+                                  .ToList();
 
-        if (endpointIgnoreMetadata is IEndpointIgnoreMetadata)
+        if (consumesMetdata.Count > 0)
         {
-            return false;
-        }
+            operation.RequestBody = new()
+            {
+                Required = true
+            };
 
-        return string.IsNullOrEmpty(apiDescription.GroupName) || string.Equals(apiDescription.GroupName, documentName, StringComparison.OrdinalIgnoreCase);
+            foreach (var md in consumesMetdata)
+            {
+                OpenApiSchema? requestSchema = null;
+                if (md.Type is object)
+                {
+                    requestSchema = context.SchemaGenerator.GenerateSchema(md.Type, context.SchemaRepository);
+                }
+
+                var mediaTypes = new MediaTypeCollection();
+                md.SetContentTypes(mediaTypes);
+                foreach (var mediaType in mediaTypes)
+                {
+                    operation.RequestBody.Content[mediaType] = new() { Schema = requestSchema };
+                }
+            }
+        }
     }
 }

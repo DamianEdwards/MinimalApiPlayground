@@ -1,13 +1,52 @@
 ﻿using System.Diagnostics;
 using System.Net.Mime;
 using System.Text;
+using System.Xml.Serialization;
 
 namespace Microsoft.AspNetCore.Http
 {
     static class AppResults
     {
+        public static IResult Created<T>(T responseBody, string contentType) => new CreatedWithContentTypeResult<T>(responseBody, contentType);
+
         public static IResult CreatedAt<T>(string routePattern, object routeValues, T responseBody) => new CreatedAtResult(routePattern, routeValues, responseBody);
         public static IResult Html(string html) => new HtmlResult(html);
+
+        class CreatedWithContentTypeResult<T> : IResult
+        {
+            private T _responseBody;
+            private readonly string _contentType;
+
+            public CreatedWithContentTypeResult(T responseBody, string contentType)
+            {
+                _responseBody = responseBody;
+                _contentType = contentType;
+            }
+
+            public async Task ExecuteAsync(HttpContext httpContext)
+            {
+                // Likely should honor Accpets header, etc.
+                httpContext.Response.StatusCode = StatusCodes.Status201Created;
+                httpContext.Response.ContentType = _contentType;
+
+                switch (_contentType)
+                {
+                    case "application/xml":
+                        // This is terrible code, don't do this
+                        var xml = new XmlSerializer(typeof(T));
+                        using (var ms = new MemoryStream())
+                        {
+                            xml.Serialize(ms, _responseBody);
+                            await ms.CopyToAsync(httpContext.Response.Body);
+                        }
+                        break;
+                    case "application/json":
+                    default:
+                        await httpContext.Response.WriteAsJsonAsync(_responseBody);
+                        break;
+                }
+            }
+        }
 
         class CreatedAtResult : IResult
         {

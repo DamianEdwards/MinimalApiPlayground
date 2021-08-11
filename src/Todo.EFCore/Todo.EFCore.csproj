@@ -3,10 +3,11 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.1.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.1.5" />
     <PackageReference Include="MinimalValidation" Version="0.1.0-pre" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.0-rc.1.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.0-rc.1.*">
