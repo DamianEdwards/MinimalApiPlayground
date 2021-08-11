@@ -5,6 +5,13 @@ namespace Microsoft.AspNetCore.Http;
 
 public static class EndpointConventionBuilderExtensions
 {
+    public static MinimalActionEndpointConventionBuilder WithTags(this MinimalActionEndpointConventionBuilder builder, params string[] tags)
+    {
+        builder.WithMetadata(new TagsAttribute(tags));
+
+        return builder;
+    }
+
     public static MinimalActionEndpointConventionBuilder Accepts(this MinimalActionEndpointConventionBuilder builder, string contentType, params string[] otherContentTypes)
     {
         builder.WithMetadata(new ConsumesAttribute(contentType, otherContentTypes));

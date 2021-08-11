@@ -24,9 +24,11 @@ app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500
    .ExcludeFromDescription();
 
 app.MapGet("/", (int? id) => "Hello World!")
-   .WithName("HelloWorldApi");
+   .WithName("HelloWorldApi")
+   .WithTags("Examples");
 
-app.MapGet("/hello", () => new { Hello = "World" });
+app.MapGet("/hello", () => new { Hello = "World" })
+   .WithTags("Examples");
 
 app.MapGet("/html", (HttpContext context) => AppResults.Html(
 @$"<!doctype html>
@@ -43,17 +45,20 @@ app.MapGet("/todos/sample", () => new[] {
         new Todo { Id = 1, Title = "Do this" },
         new Todo { Id = 2, Title = "Do this too" }
     })
-   .ExcludeFromDescription();
+   .WithTags("Examples", "TodoApi");
 
 app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync())
-   .WithName("GetAllTodos");
+   .WithName("GetAllTodos")
+   .WithTags("TodoApi");
 
 app.MapGet("/todos/incompleted", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync())
    .WithName("GetIncompletedTodos")
+   .WithTags("TodoApi")
    .Produces<Todo[]>();
 
 app.MapGet("/todos/completed", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync())
    .WithName("GetCompletedTodos")
+   .WithTags("TodoApi")
    .Produces<List<Todo>>();
 
 app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
@@ -64,6 +69,7 @@ app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
                 : Results.NotFound();
     })
     .WithName("GetTodoById")
+    .WithTags("TodoApi")
     .Produces<List<Todo>>()
     .Produces(StatusCodes.Status404NotFound);
 
@@ -78,6 +84,7 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
         return Results.CreatedAtRoute("GetTodoById", new { todo.Id }, todo);
     })
     .WithName("AddTodo")
+    .WithTags("TodoApi")
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 
@@ -111,6 +118,7 @@ app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
         return Results.CreatedAtRoute("GetTodoById", new { todo.Id }, todo);
     })
     .WithName("AddTodoFromFile")
+    .WithTags("TodoApi")
     .AcceptsFormFile("todofile")
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
@@ -141,6 +149,7 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
         return AppResults.Created(todo, contentType);
     })
     .WithName("AddTodoXmlOrJson")
+    .WithTags("TodoApi")
     .Accepts<Todo>("application/json", "application/xml")
     .Produces(StatusCodes.Status415UnsupportedMediaType)
     .ProducesValidationProblem()
@@ -152,6 +161,7 @@ app.MapPost("/todos-local-func", AddTodoFunc);
 // EndpointName set automatically to name of method (waiting on PR https://github.com/dotnet/aspnetcore/pull/35069)
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
+[TagsAttribute("TodoApi")]
 async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 {
     if (!MinimalValidation.TryValidate(todo, out var errors))
@@ -181,6 +191,7 @@ app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
         }
     })
     .WithName("UpdateTodo")
+    .WithTags("TodoApi")
     .ProducesValidationProblem()
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
@@ -199,6 +210,7 @@ app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
         }
     })
     .WithName("CompleteTodo")
+    .WithTags("TodoApi")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 
@@ -216,6 +228,7 @@ app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
         }
     })
     .WithName("UncompleteTodo")
+    .WithTags("TodoApi")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 
@@ -231,6 +244,7 @@ app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
         return Results.NotFound();
     })
     .WithName("DeleteTodo")
+    .WithTags("TodoApi")
     .Produces<Todo>()
     .Produces(StatusCodes.Status404NotFound);
 
@@ -241,6 +255,7 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
         return Results.Ok(rowCount);
     })
     .WithName("DeleteAllTodos")
+    .WithTags("TodoApi")
     .Produces<int>();
 
 app.Run();

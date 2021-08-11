@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc.ApiExplorer;
+﻿using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Rewrite;
@@ -35,6 +36,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         {
             //options.RequestBodyFilter<ConsumesRequestTypeRequestFilter>();
             options.OperationFilter<ConsumesRequestTypeRequestFilter>();
+            options.TagActionsBy(TagsSelector);
             options.SwaggerDoc(Version, new OpenApiInfo { Title = hostingEnvironment.ApplicationName, Version = Version });
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
@@ -71,6 +73,32 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
                 options.SwaggerEndpoint($"/swagger/{Version}/swagger.json", $"{env.ApplicationName} v1");
             });
         }
+    }
+
+    private static IList<string> TagsSelector(ApiDescription api)
+    {
+        var tags = new List<string>();
+
+        foreach (var em in api.ActionDescriptor.EndpointMetadata)
+        {
+            if (em is ITagsMetadata itm)
+            {
+                tags.AddRange(itm.Tags);
+            }
+        }
+
+        if (tags.Count == 0)
+        {
+            // Swashbuckle defaults to using the controller route value as a tag so add it here
+            // if there wasn't more specific tag metadata present
+            var controller = api.ActionDescriptor.RouteValues["controller"];
+            if (controller is object)
+            {
+                tags.Add(controller);
+            }
+        }
+
+        return tags;
     }
 }
 
