@@ -105,17 +105,27 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         return tags;
     }
 
-    private static string SchemaIdSelector(Type type)
+    private static string SchemaIdSelector(Type modelType)
     {
-        if (type.CustomAttributes.Any(a => a.AttributeType == typeof(CompilerGeneratedAttribute)))
+        if (!modelType.IsConstructedGenericType)
+            return modelType.Name.Replace("[]", "Array");
+
+        var prefix = modelType.GetGenericArguments()
+            .Select(genericArg => SchemaIdSelector(genericArg))
+            .Aggregate((previous, current) => previous + current);
+
+        var name = modelType.Name;
+
+        if (modelType.CustomAttributes.Any(a => a.AttributeType == typeof(CompilerGeneratedAttribute)))
         {
-            var match = Regex.Match(type.Name, @"AnonymousType\d+");
-            return match.Success
-                ? $"{type.Assembly.GetName().Name}.{match.Value}"
-                : type.Name;
+            var match = Regex.Match(modelType.Name, @"AnonymousType\d+");
+            name = match.Success
+                //? $"{modelType.Assembly.GetName().Name}.{match.Value}"
+                ? match.Value
+                : modelType.Name;
         }
 
-        return type.Name;
+        return prefix + name.Split('`').First();
     }
 }
 

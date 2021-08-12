@@ -30,6 +30,9 @@ app.MapGet("/", (int? id) => "Hello World!")
 app.MapGet("/hello", () => new { Hello = "World" })
    .WithTags("Examples");
 
+app.MapGet("/goodbye", () => new { Goodbye = "World" })
+   .WithTags("Examples");
+
 app.MapGet("/html", (HttpContext context) => AppResults.Html(
 @$"<!doctype html>
 <html>
