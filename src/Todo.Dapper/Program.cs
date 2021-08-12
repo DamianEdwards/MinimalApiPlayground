@@ -11,7 +11,7 @@ builder.Services.AddSwaggerGen(o => o.SwaggerDoc("v1", new() { Title = "TodoApi"
 
 var app = builder.Build();
 
-await EnsureDb(connectionString, app.Logger);
+await EnsureDb(app.Services, app.Logger);
 
 if (!app.Environment.IsDevelopment())
 {
@@ -111,11 +111,11 @@ app.MapDelete("/todos/delete-all", async (SqliteConnection db) => Results.Ok(awa
 
 app.Run();
 
-async Task EnsureDb(string connectionString, ILogger logger)
+async Task EnsureDb(IServiceProvider services, ILogger logger)
 {
     logger.LogInformation("Ensuring database exists at connection string '{connectionString}'", connectionString);
 
-    using var db = new SqliteConnection(connectionString);
+    using var db = services.CreateScope().ServiceProvider.GetRequiredService<SqliteConnection>();
     var sql = $@"CREATE TABLE IF NOT EXISTS Todos (
                   {nameof(Todo.Id)} INTEGER PRIMARY KEY AUTOINCREMENT,
                   {nameof(Todo.Title)} TEXT NOT NULL,
@@ -124,7 +124,7 @@ async Task EnsureDb(string connectionString, ILogger logger)
     await db.ExecuteAsync(sql);
 }
 
-class Todo
+public class Todo
 {
     public int Id { get; set; }
     public string? Title { get; set; }
