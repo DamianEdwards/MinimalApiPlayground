@@ -179,7 +179,9 @@ public class ConsumesRequestTypeRequestFilter : IRequestBodyFilter, IOperationFi
 
             foreach (var pd in formFileParams)
             {
-                properties[pd.Name] = new OpenApiSchema { Type = "string", Format = "binary" };
+                if (properties.ContainsKey(pd.Name)) continue;
+
+                properties.Add(pd.Name, new OpenApiSchema { Type = "string", Format = "binary" });
             }
 
             var schema = new OpenApiSchema
