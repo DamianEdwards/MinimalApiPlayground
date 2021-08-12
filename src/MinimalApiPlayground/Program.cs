@@ -23,7 +23,7 @@ app.MapGet("/throw", () => { throw new Exception("uh oh"); })
 app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
    .ExcludeFromDescription();
 
-app.MapGet("/", (int? id) => "Hello World!")
+app.MapGet("/", () => "Hello World!")
    .WithName("HelloWorldApi")
    .WithTags("Examples");
 

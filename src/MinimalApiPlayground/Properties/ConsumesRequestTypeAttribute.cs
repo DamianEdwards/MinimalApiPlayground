@@ -10,10 +10,10 @@ public class ConsumesRequestTypeAttribute : ConsumesAttribute, IApiRequestMetada
 
     }
 
-    public ConsumesRequestTypeAttribute(Type type)
-        : base("application/json")
+    public ConsumesRequestTypeAttribute(Type requestType, string contentType, params string[] otherContentTypes)
+        : base(contentType, otherContentTypes)
     {
-        Type = type ?? throw new ArgumentNullException(nameof(type));
+        Type = requestType ?? throw new ArgumentNullException(nameof(requestType));
     }
 
     public Type? Type { get; set; }
@@ -21,5 +21,5 @@ public class ConsumesRequestTypeAttribute : ConsumesAttribute, IApiRequestMetada
 
 public interface IApiRequestMetadataProvider2 : IApiRequestMetadataProvider
 {
-    Type? Type { get; }
+    Type? Type => null;
 }

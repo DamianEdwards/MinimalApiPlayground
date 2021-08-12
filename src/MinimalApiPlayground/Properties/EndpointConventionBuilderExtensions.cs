@@ -19,9 +19,9 @@ public static class EndpointConventionBuilderExtensions
         return builder;
     }
 
-    public static MinimalActionEndpointConventionBuilder Accepts<T>(this MinimalActionEndpointConventionBuilder builder, string? contentType = null, params string[] otherContentTypes)
+    public static MinimalActionEndpointConventionBuilder Accepts<TRequest>(this MinimalActionEndpointConventionBuilder builder, string? contentType = null, params string[] otherContentTypes)
     {
-        Accepts(builder, typeof(T), contentType, otherContentTypes);
+        Accepts(builder, typeof(TRequest), contentType, otherContentTypes);
 
         return builder;
     }
@@ -29,12 +29,7 @@ public static class EndpointConventionBuilderExtensions
     public static MinimalActionEndpointConventionBuilder Accepts(this MinimalActionEndpointConventionBuilder builder, Type requestType, string? contentType = null, params string[] otherContentTypes)
     {
         builder.WithMetadata(
-            contentType is object
-                ? new ConsumesRequestTypeAttribute(contentType, otherContentTypes)
-                    {
-                        Type = requestType
-                    }
-                : new ConsumesRequestTypeAttribute(requestType)
+            new ConsumesRequestTypeAttribute(requestType, contentType ?? "application/json", otherContentTypes)
         );
 
         return builder;
