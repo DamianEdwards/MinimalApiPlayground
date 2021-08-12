@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -84,14 +85,13 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.CreatedAtRoute("GetTodoById", new { todo.Id }, todo);
+        return Results.Created($"/todo/{todo.Id}", todo); ;
     })
     .WithName("AddTodo")
     .WithTags("TodoApi")
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 
-// This doesn't work yet, it's a WIP :)
 app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
     {
         if (!request.HasFormContentType)
@@ -104,10 +104,11 @@ app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
         }
 
         var file = form.Files[0];
-        if (file.ContentDisposition != "application/json")
+        if (file.ContentType != "application/json")
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
 
-        var todo = await System.Text.Json.JsonSerializer.DeserializeAsync<Todo>(file.OpenReadStream());
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var todo = await JsonSerializer.DeserializeAsync<Todo>(file.OpenReadStream(), json);
 
         if (todo is not Todo)
             return Results.BadRequest();
@@ -118,7 +119,7 @@ app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.CreatedAtRoute("GetTodoById", new { todo.Id }, todo);
+        return Results.Created($"/todo/{todo.Id}", todo);
     })
     .WithName("AddTodoFromFile")
     .WithTags("TodoApi")

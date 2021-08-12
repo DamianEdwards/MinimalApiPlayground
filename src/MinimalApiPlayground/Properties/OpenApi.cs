@@ -170,21 +170,33 @@ public class ConsumesRequestTypeRequestFilter : IRequestBodyFilter, IOperationFi
         }
 
         var formFileParams = endpointMetadata.OfType<ApiParameterDescription>()
-                                              .Where(pd => pd.Source == BindingSource.FormFile)
-                                              .ToList();
+                                             .Where(pd => pd.Source == BindingSource.FormFile)
+                                             .ToList();
         
         if (formFileParams.Count > 0)
         {
-            operation.RequestBody = new();
-            operation.RequestBody.Content["multipart/form-data"] = new() {  };
+            var properties = new Dictionary<string, OpenApiSchema>();
 
             foreach (var pd in formFileParams)
             {
-                if (!operation.Parameters.Any(p => string.Equals(p.Name, pd.Name, StringComparison.OrdinalIgnoreCase)))
-                {
-                    operation.Parameters.Add(new() { Name = pd.Name, Style = ParameterStyle.Form });
-                }
+                properties[pd.Name] = new OpenApiSchema { Type = "string", Format = "binary" };
             }
+
+            var schema = new OpenApiSchema
+            {
+                Type = "object",
+                Properties = properties
+            };
+
+            operation.RequestBody = new();
+            operation.RequestBody.Content["multipart/form-data"] = new OpenApiMediaType
+            {
+                Schema = schema,
+                Encoding = schema.Properties.ToDictionary(
+                    entry => entry.Key,
+                    entry => new OpenApiEncoding { Style = ParameterStyle.Form }
+                )
+            };
         }
     }
 }
