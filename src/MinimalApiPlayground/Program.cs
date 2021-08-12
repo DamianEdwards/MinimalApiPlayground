@@ -53,12 +53,13 @@ app.MapGet("/todos/sample", () => new[] {
 
 app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync())
    .WithName("GetAllTodos")
-   .WithTags("TodoApi");
+   .WithTags("TodoApi")
+   .Produces<List<Todo>>();
 
 app.MapGet("/todos/incompleted", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync())
    .WithName("GetIncompletedTodos")
    .WithTags("TodoApi")
-   .Produces<Todo[]>();
+   .Produces<List<Todo>>();
 
 app.MapGet("/todos/completed", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync())
    .WithName("GetCompletedTodos")
@@ -74,7 +75,7 @@ app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
     })
     .WithName("GetTodoById")
     .WithTags("TodoApi")
-    .Produces<List<Todo>>()
+    .Produces<Todo>()
     .Produces(StatusCodes.Status404NotFound);
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
@@ -89,41 +90,6 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     })
     .WithName("AddTodo")
     .WithTags("TodoApi")
-    .ProducesValidationProblem()
-    .Produces<Todo>(StatusCodes.Status201Created);
-
-app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
-    {
-        if (!request.HasFormContentType)
-            return Results.BadRequest();
-
-        var form = await request.ReadFormAsync();
-        if (form.Files.Count != 1)
-        {
-            return Results.BadRequest();
-        }
-
-        var file = form.Files[0];
-        if (file.ContentType != "application/json")
-            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
-
-        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        var todo = await JsonSerializer.DeserializeAsync<Todo>(file.OpenReadStream(), json);
-
-        if (todo is not Todo)
-            return Results.BadRequest();
-
-        if (!MinimalValidation.TryValidate(todo, out var errors))
-            return Results.ValidationProblem(errors);
-
-        db.Todos.Add(todo);
-        await db.SaveChangesAsync();
-
-        return Results.Created($"/todo/{todo.Id}", todo);
-    })
-    .WithName("AddTodoFromFile")
-    .WithTags("TodoApi")
-    .AcceptsFormFile("todofile")
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 
@@ -159,7 +125,43 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created, "application/json", "application/xml");
 
-// Example of adding the above endpoint but using attributes to describe it instead
+// Example of manually supporting file upload
+app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
+    {
+        if (!request.HasFormContentType)
+            return Results.BadRequest();
+
+        var form = await request.ReadFormAsync();
+        if (form.Files.Count != 1)
+        {
+            return Results.BadRequest();
+        }
+
+        var file = form.Files[0];
+        if (file.ContentType != "application/json")
+            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var todo = await JsonSerializer.DeserializeAsync<Todo>(file.OpenReadStream(), jsonOptions);
+
+        if (todo is not Todo)
+            return Results.BadRequest();
+
+        if (!MinimalValidation.TryValidate(todo, out var errors))
+            return Results.ValidationProblem(errors);
+
+        db.Todos.Add(todo);
+        await db.SaveChangesAsync();
+
+        return Results.Created($"/todo/{todo.Id}", todo);
+    })
+    .WithName("AddTodoFromFile")
+    .WithTags("TodoApi")
+    .AcceptsFormFile("todofile")
+    .ProducesValidationProblem()
+    .Produces<Todo>(StatusCodes.Status201Created);
+
+// Example of adding an endpoint via a MethodGroup with attributes to describe it
 app.MapPost("/todos-local-func", AddTodoFunc);
 
 // EndpointName set automatically to name of method (waiting on PR https://github.com/dotnet/aspnetcore/pull/35069)
