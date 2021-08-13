@@ -120,7 +120,6 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         {
             var match = Regex.Match(modelType.Name, @"AnonymousType\d+");
             name = match.Success
-                //? $"{modelType.Assembly.GetName().Name}.{match.Value}"
                 ? match.Value
                 : modelType.Name;
         }

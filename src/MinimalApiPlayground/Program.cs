@@ -142,24 +142,32 @@ app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
 
         var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        var todo = await JsonSerializer.DeserializeAsync<Todo>(file.OpenReadStream(), jsonOptions);
+        var todos = await JsonSerializer.DeserializeAsync<List<Todo>>(file.OpenReadStream(), jsonOptions);
 
-        if (todo is not Todo)
+        if (!(todos?.Count > 0))
             return Results.BadRequest();
 
-        if (!MinimalValidation.TryValidate(todo, out var errors))
-            return Results.ValidationProblem(errors);
+        var todoCount = 0;
+        foreach (var todo in todos)
+        {
+            if (!MinimalValidation.TryValidate(todo, out var errors))
+            {
+                return Results.ValidationProblem(errors.ToDictionary(entry => $"[{todoCount}].{entry.Key}", entry => entry.Value));
+            }
 
-        db.Todos.Add(todo);
+            db.Todos.Add(todo);
+            todoCount++;
+        }
+
         await db.SaveChangesAsync();
 
-        return Results.Created($"/todo/{todo.Id}", todo);
+        return Results.Created(string.Join(';', todos.Select(t => $"/todo/{t.Id}")), todos);
     })
-    .WithName("AddTodoFromFile")
+    .WithName("AddTodosFromFile")
     .WithTags("TodoApi")
     .AcceptsFormFile("todofile")
     .ProducesValidationProblem()
-    .Produces<Todo>(StatusCodes.Status201Created);
+    .Produces<List<Todo>>(StatusCodes.Status201Created);
 
 // Example of adding an endpoint via a MethodGroup with attributes to describe it
 app.MapPost("/todos-local-func", AddTodoFunc);
