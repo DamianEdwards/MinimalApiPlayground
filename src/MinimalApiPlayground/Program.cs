@@ -34,6 +34,9 @@ app.MapGet("/hello", () => new { Hello = "World" })
 app.MapGet("/goodbye", () => new { Goodbye = "World" })
    .WithTags("Examples");
 
+app.MapGet("/hellofunc", Endpoints.HelloWorldFunc)
+   .WithTags("Examples");
+
 app.MapGet("/html", (HttpContext context) => AppResults.Html(
 @$"<!doctype html>
 <html>

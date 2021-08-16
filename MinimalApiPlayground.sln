@@ -16,7 +16,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalApiPlayground", "src
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{943F33A2-9ADD-414D-86EA-18791AC22B59}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Todo.Dapper.Tests", "tests\Todo.Dapper.Tests\Todo.Dapper.Tests.csproj", "{0CF57487-1D45-463D-8888-327ED49D587C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Todo.Dapper.Tests", "tests\Todo.Dapper.Tests\Todo.Dapper.Tests.csproj", "{0CF57487-1D45-463D-8888-327ED49D587C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{D6C7B342-0736-4449-907D-0AA6ED39C7C5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{295B6F6A-CE80-4B6E-B170-88E2702AFA29}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\dotnet.yml = .github\workflows\dotnet.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -46,6 +53,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{0CF57487-1D45-463D-8888-327ED49D587C} = {943F33A2-9ADD-414D-86EA-18791AC22B59}
+		{295B6F6A-CE80-4B6E-B170-88E2702AFA29} = {D6C7B342-0736-4449-907D-0AA6ED39C7C5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A5280A9C-84E5-4FCB-826A-00869EF0B4D8}

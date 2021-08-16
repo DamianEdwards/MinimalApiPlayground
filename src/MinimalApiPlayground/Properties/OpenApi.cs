@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Rewrite;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
@@ -41,6 +42,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
             options.OperationFilter<ConsumesRequestTypeRequestFilter>();
             options.TagActionsBy(TagsSelector);
             options.CustomSchemaIds(SchemaIdSelector);
+            options.CustomOperationIds(OperationIdSelector);
             options.SwaggerDoc(Version, new OpenApiInfo { Title = hostingEnvironment.ApplicationName, Version = Version });
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
@@ -125,6 +127,41 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         }
 
         return prefix + name.Split('`').First();
+    }
+
+    private static string? OperationIdSelector(ApiDescription apiDescription)
+    {
+        // Default: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/cf7c50b70390a296f748d9a1f894823e2d9c7280/src/Swashbuckle.AspNetCore.SwaggerGen/SwaggerGenerator/SwaggerGeneratorOptions.cs#L63
+        string? methodName = null;
+
+        if (apiDescription.ActionDescriptor.EndpointMetadata.FirstOrDefault(e => e is MethodInfo) is MethodInfo methodInfo)
+        {
+            if (methodInfo.Name.StartsWith("<"))
+            {
+                // Method name is compiler generated
+                // Generated name for named local functions is of form <<Main>$>g__AddTodoFunc|0_14
+                var match = Regex.Match(methodInfo.Name, @"^<<(?<DeclaringType>\w+)>\$>\w*__(?<MethodName>\w*)\|");
+                if (match.Success && match.Groups.ContainsKey("MethodName"))
+                {
+                    methodName = match.Groups["MethodName"].Value;
+                }
+            }
+            else
+            {
+                methodName = methodInfo.Name;
+            }
+        }
+
+        var actionDescriptor = apiDescription.ActionDescriptor;
+
+        // Resolve the operation ID from the route name and fallback to the
+        // endpoint name if no route name is available. This allows us to
+        // generate operation IDs for endpoints that are defined using
+        // minimal APIs.
+        return
+            actionDescriptor.AttributeRouteInfo?.Name
+            ?? (actionDescriptor.EndpointMetadata.FirstOrDefault(m => m is IEndpointNameMetadata) as IEndpointNameMetadata)?.EndpointName
+            ?? methodName;
     }
 }
 
