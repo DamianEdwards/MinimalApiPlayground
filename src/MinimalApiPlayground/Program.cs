@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Data Source=todos.db";
 
+builder.Services.AddAntiforgery();
 builder.Services.AddSqlite<TodoDb>(connectionString)
                 .AddDatabaseDeveloperPageExceptionFilter();
 
@@ -17,6 +19,8 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/error");
     app.UseRouting();
 }
+
+app.UseAntiforgery();
 
 app.MapGet("/throw", () => { throw new Exception("uh oh"); })
    .ExcludeFromDescription();
@@ -128,6 +132,16 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created, "application/json", "application/xml");
 
+app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery) =>
+    {
+        var tokenSet = antiforgery.GetTokens(httpContext);
+
+        return tokenSet;
+    })
+    .WithName("AddTodosFromFile_GetAntiXsrfToken")
+    .WithTags("TodoApi")
+    .Produces<AntiforgeryTokenSet>();
+
 // Example of manually supporting file upload
 app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
     {
@@ -169,6 +183,7 @@ app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
     .WithName("AddTodosFromFile")
     .WithTags("TodoApi")
     .AcceptsFormFile("todofile")
+    .RequiresAntiforgery()
     .ProducesValidationProblem()
     .Produces<List<Todo>>(StatusCodes.Status201Created);
 

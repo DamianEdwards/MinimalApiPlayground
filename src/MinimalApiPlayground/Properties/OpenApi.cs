@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Http.Metadata;
+﻿using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Rewrite;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Collections.Concurrent;
@@ -18,6 +20,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
     {
         builder.ConfigureServices((context, services) =>
         {
+            services.AddAntiforgery();
             ConfigureSwashbuckle(services, context.HostingEnvironment);
         });
     }
@@ -36,16 +39,32 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
     internal static void ConfigureSwashbuckle(IServiceCollection services, IWebHostEnvironment hostingEnvironment)
     {
         services.AddEndpointsApiExplorer();
+        services.AddSingleton<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerGenOptions>();
         services.AddSwaggerGen(options =>
         {
             //options.RequestBodyFilter<ConsumesRequestTypeRequestFilter>();
+            
+        });
+        services.AddTransient<IStartupFilter, OpenApiConfiguration>();
+    }
+
+    class ConfigureSwaggerGenOptions : IConfigureOptions<SwaggerGenOptions>
+    {
+        private readonly IWebHostEnvironment _hostingEnvironment;
+
+        public ConfigureSwaggerGenOptions(IWebHostEnvironment hostingEnvironment)
+        {
+            _hostingEnvironment = hostingEnvironment;
+        }
+
+        public void Configure(SwaggerGenOptions options)
+        {
             options.OperationFilter<ConsumesRequestTypeRequestFilter>();
             options.TagActionsBy(TagsSelector);
             options.CustomSchemaIds(SchemaIdSelector);
             options.CustomOperationIds(OperationIdSelector);
-            options.SwaggerDoc(Version, new OpenApiInfo { Title = hostingEnvironment.ApplicationName, Version = Version });
-        });
-        services.AddTransient<IStartupFilter, OpenApiConfiguration>();
+            options.SwaggerDoc(Version, new OpenApiInfo { Title = _hostingEnvironment.ApplicationName, Version = Version });
+        }
     }
 
     internal static void ConfigureSwashbuckle(IApplicationBuilder app)
@@ -165,11 +184,13 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
     }
 }
 
-public class ConsumesRequestTypeRequestFilter : IRequestBodyFilter, IOperationFilter
+public class ConsumesRequestTypeRequestFilter : IOperationFilter
 {
-    public void Apply(OpenApiRequestBody requestBody, RequestBodyFilterContext context)
+    private readonly AntiforgeryOptions? _antiForgeryOptions;
+
+    public ConsumesRequestTypeRequestFilter(IServiceProvider serviceProvider)
     {
-        throw new NotImplementedException();
+        _antiForgeryOptions = serviceProvider.GetService<IOptions<AntiforgeryOptions>>()?.Value;
     }
 
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
@@ -205,11 +226,44 @@ public class ConsumesRequestTypeRequestFilter : IRequestBodyFilter, IOperationFi
             }
         }
 
+        var antiforgeryMetadata = endpointMetadata.OfType<IAntiforgeryMetadata>()
+                                                  .ToList();
+
+        var requiresAntiForgeryToken = antiforgeryMetadata.Count > 0;
+
+        if (requiresAntiForgeryToken && _antiForgeryOptions is AntiforgeryOptions)
+        {
+            if (!antiforgeryMetadata.Any(m => m is IDisableAntiforgery))
+            {
+                var xsrfHeaderTokenParameter = new OpenApiParameter
+                {
+                    In = ParameterLocation.Header,
+                    Name = _antiForgeryOptions.HeaderName,
+                    Schema = new OpenApiSchema
+                    {
+                        Type = "string"
+                    }
+                };
+                operation.Parameters.Add(xsrfHeaderTokenParameter);
+
+                var xsrfCookieTokenParameter = new OpenApiParameter
+                {
+                    In = ParameterLocation.Cookie,
+                    Name = _antiForgeryOptions.Cookie.Name,
+                    Schema = new OpenApiSchema
+                    {
+                        Type = "string"
+                    }
+                };
+                operation.Parameters.Add(xsrfCookieTokenParameter);
+            }
+        }
+
         var formFileParams = endpointMetadata.OfType<ApiParameterDescription>()
                                              .Where(pd => pd.Source == BindingSource.FormFile)
                                              .ToList();
         
-        if (formFileParams.Count > 0)
+        if (formFileParams.Count > 0 || requiresAntiForgeryToken)
         {
             var properties = new Dictionary<string, OpenApiSchema>();
 
@@ -218,6 +272,11 @@ public class ConsumesRequestTypeRequestFilter : IRequestBodyFilter, IOperationFi
                 if (properties.ContainsKey(pd.Name)) continue;
 
                 properties.Add(pd.Name, new OpenApiSchema { Type = "string", Format = "binary" });
+            }
+
+            if (requiresAntiForgeryToken && _antiForgeryOptions is AntiforgeryOptions)
+            {
+                properties.Add(_antiForgeryOptions.FormFieldName, new OpenApiSchema { Type = "string" });
             }
 
             var schema = new OpenApiSchema
