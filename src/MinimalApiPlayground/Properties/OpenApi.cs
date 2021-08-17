@@ -276,7 +276,7 @@ public class ConsumesRequestTypeRequestFilter : IOperationFilter
 
             if (requiresAntiForgeryToken && _antiForgeryOptions is AntiforgeryOptions)
             {
-                properties.Add(_antiForgeryOptions.FormFieldName, new OpenApiSchema { Type = "string" });
+                //properties.Add(_antiForgeryOptions.FormFieldName, new OpenApiSchema { Type = "string" });
             }
 
             var schema = new OpenApiSchema
