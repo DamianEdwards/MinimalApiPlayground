@@ -5,31 +5,6 @@
 
 static class Roslyn
 {
-    private static int IndexOfBalancedParenthesis(string str, int openingOffset, char closing)
-    {
-        char opening = str[openingOffset];
-
-        int depth = 1;
-        for (int i = openingOffset + 1; i < str.Length; i++)
-        {
-            var c = str[i];
-            if (c == opening)
-            {
-                depth++;
-            }
-            else if (c == closing)
-            {
-                depth--;
-                if (depth == 0)
-                {
-                    return i;
-                }
-            }
-        }
-
-        return -1;
-    }
-
     internal static class GeneratedNameParser
     {
         // Parse the generated name. Returns true for names of the form
