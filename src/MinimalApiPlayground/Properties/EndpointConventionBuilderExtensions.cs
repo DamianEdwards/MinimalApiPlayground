@@ -13,13 +13,6 @@ public static class EndpointConventionBuilderExtensions
         return builder;
     }
 
-    public static MinimalActionEndpointConventionBuilder Accepts(this MinimalActionEndpointConventionBuilder builder, string contentType, params string[] otherContentTypes)
-    {
-        builder.WithMetadata(new ConsumesAttribute(contentType, otherContentTypes));
-
-        return builder;
-    }
-
     public static MinimalActionEndpointConventionBuilder Accepts<TRequest>(this MinimalActionEndpointConventionBuilder builder, string? contentType = null, params string[] otherContentTypes)
     {
         Accepts(builder, typeof(TRequest), contentType, otherContentTypes);
