@@ -155,14 +155,19 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
 
         if (apiDescription.ActionDescriptor.EndpointMetadata.FirstOrDefault(e => e is MethodInfo) is MethodInfo methodInfo)
         {
-            if (methodInfo.Name.StartsWith("<"))
+
+
+            if (Roslyn.GeneratedNameParser.TryParseGeneratedName(methodInfo.Name, out Roslyn.GeneratedNameKind generatedNameKind, out int openBracketOffset, out int closeBracketOffset))
             {
                 // Method name is compiler generated
-                // Generated name for named local functions is of form <<Main>$>g__AddTodoFunc|0_14
-                var match = Regex.Match(methodInfo.Name, @"^<<(?<DeclaringType>\w+)>\$>\w*__(?<MethodName>\w*)\|");
-                if (match.Success && match.Groups.ContainsKey("MethodName"))
+                if (generatedNameKind == Roslyn.GeneratedNameKind.LocalFunction
+                    && Roslyn.GeneratedNameParser.TryParseLocalFunctionName(methodInfo.Name, out string? localFunctionName))
                 {
-                    methodName = match.Groups["MethodName"].Value;
+                    methodName = localFunctionName;
+                }
+                else
+                {
+                    methodName = null;
                 }
             }
             else
