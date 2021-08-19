@@ -33,6 +33,7 @@ app.MapGet("/", () => "Hello World!")
    .WithTags("Examples");
 
 app.MapGet("/hello", () => new { Hello = "World" })
+   .WithName("HelloWorldApi")
    .WithTags("Examples");
 
 app.MapGet("/goodbye", () => new { Goodbye = "World" })
@@ -289,6 +290,24 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
     .WithName("DeleteAllTodos")
     .WithTags("TodoApi")
     .Produces<int>();
+
+app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
+    $"Successfully parsed {id.Value} as Wrapped<int>!")
+   .WithTags("Examples");
+
+app.MapGet("/parse/{id}", (Parseable<int> id) =>
+    $"Successfully parsed {id.Value} as Parseable<int>!")
+    .WithTags("Examples");
+
+app.UseMutateResponse();
+
+app.MapGet("/mutate-test/{id}", (int? id) =>
+{
+    // Request this via /mutate-test/foo will return 400 by default
+    return $"Id of '{id}' was bound from request successfully!";
+})
+.MutateResponse(404, "The ID specified was not in the correct format. Please don't do that.")
+.WithTags("Examples");
 
 app.Run();
 
