@@ -14,8 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-      <_Parameter1>Todo.Dapper.Tests</_Parameter1>
-    </AssemblyAttribute>
+    <InternalsVisibleTo Include="Todo.Dapper.Tests" />
   </ItemGroup>
 </Project>
