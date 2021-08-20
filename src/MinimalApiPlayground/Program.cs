@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.Configure<JsonOptions>(o => o.JsonSerializerOptions.IncludeFields = true);
 
 var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Data Source=todos.db";
 
@@ -22,12 +23,14 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAntiforgery();
 
+// Error handling
 app.MapGet("/throw", () => { throw new Exception("uh oh"); })
    .ExcludeFromDescription();
 
 app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
    .ExcludeFromDescription();
 
+// Hello World
 app.MapGet("/", () => "Hello World!")
    .WithName("HelloWorldApi")
    .WithTags("Examples");
@@ -42,6 +45,16 @@ app.MapGet("/goodbye", () => new { Goodbye = "World" })
 app.MapGet("/hellofunc", Endpoints.HelloWorldFunc)
    .WithTags("Examples");
 
+// Working with raw JSON
+app.MapGet("/jsonraw", () => JsonDocument.Parse("{ \"Id\": 123, \"Name\": \"Example\" }"))
+    .WithName("RawJsonOutput")
+    .WithTags("Examples");
+
+app.MapPost("/jsonraw", (JsonElement json) => $"Thanks for the JSON:\r\n{json}")
+    .WithName("RawJsonInput")
+    .WithTags("Examples");
+
+// Example HTML output from custom IResult
 app.MapGet("/html", (HttpContext context) => AppResults.Html(
 @$"<!doctype html>
 <html>
@@ -53,6 +66,28 @@ app.MapGet("/html", (HttpContext context) => AppResults.Html(
 </html>"))
    .ExcludeFromDescription();
 
+
+// Custom parameter binding via [TargetType].TryParse
+app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
+    $"Successfully parsed {id.Value} as Wrapped<int>!")
+    .WithTags("Examples");
+
+app.MapGet("/parse/{id}", (Parseable<int> id) =>
+    $"Successfully parsed {id.Value} as Parseable<int>!")
+    .WithTags("Examples");
+
+// Overriding/mutating response defaults using middleware
+app.UseMutateResponse();
+
+app.MapGet("/mutate-test/{id}", (int? id) =>
+    {
+        // Request this via /mutate-test/foo will return 400 by default
+        return $"Id of '{id}' was bound from request successfully!";
+    })
+    .MutateResponse(404, "The ID specified was not in the correct format. Please don't do that.")
+    .WithTags("Examples");
+
+// Todos API
 app.MapGet("/todos/sample", () => new[] {
         new Todo { Id = 1, Title = "Do this" },
         new Todo { Id = 2, Title = "Do this too" }
@@ -101,6 +136,24 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 
+// Example of adding an endpoint via a local function MethodGroup with attributes to describe it
+app.MapPost("/todos-local-func", AddTodoFunc);
+
+// EndpointName set automatically to name of method
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
+[Tags("TodoApi")]
+async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
+{
+    if (!MinimalValidation.TryValidate(todo, out var errors))
+        return Results.ValidationProblem(errors);
+
+    db.Todos.Add(todo);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/todos/{todo.Id}", todo);
+}
+
 // Example of manually supporting more than JSON for input/output
 app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
     {
@@ -133,6 +186,7 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created, "application/json", "application/xml");
 
+// Example of manually supporting file upload (comment out AntiForgery lines to allow POST from browser)
 app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery) =>
     {
         var tokenSet = antiforgery.GetTokens(httpContext);
@@ -143,7 +197,6 @@ app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery
     .WithTags("TodoApi")
     .Produces<AntiforgeryTokenSet>();
 
-// Example of manually supporting file upload
 app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
     {
         if (!request.HasFormContentType)
@@ -185,26 +238,10 @@ app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
     .WithTags("TodoApi")
     .AcceptsFormFile("todofile")
     .RequiresAntiforgery()
+    .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status415UnsupportedMediaType)
     .ProducesValidationProblem()
     .Produces<List<Todo>>(StatusCodes.Status201Created);
-
-// Example of adding an endpoint via a MethodGroup with attributes to describe it
-app.MapPost("/todos-local-func", AddTodoFunc);
-
-// EndpointName set automatically to name of method (waiting on PR https://github.com/dotnet/aspnetcore/pull/35069)
-[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
-[TagsAttribute("TodoApi")]
-async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
-{
-    if (!MinimalValidation.TryValidate(todo, out var errors))
-        return Results.ValidationProblem(errors);
-
-    db.Todos.Add(todo);
-    await db.SaveChangesAsync();
-
-    return Results.Created($"/todos/{todo.Id}", todo);
-}
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     {
@@ -290,24 +327,6 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
     .WithName("DeleteAllTodos")
     .WithTags("TodoApi")
     .Produces<int>();
-
-app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
-    $"Successfully parsed {id.Value} as Wrapped<int>!")
-   .WithTags("Examples");
-
-app.MapGet("/parse/{id}", (Parseable<int> id) =>
-    $"Successfully parsed {id.Value} as Parseable<int>!")
-    .WithTags("Examples");
-
-app.UseMutateResponse();
-
-app.MapGet("/mutate-test/{id}", (int? id) =>
-{
-    // Request this via /mutate-test/foo will return 400 by default
-    return $"Id of '{id}' was bound from request successfully!";
-})
-.MutateResponse(404, "The ID specified was not in the correct format. Please don't do that.")
-.WithTags("Examples");
 
 app.Run();
 

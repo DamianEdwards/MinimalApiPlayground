@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("TodoDb") ?? "Data Source=todos.db";
 builder.Services.AddScoped<SqliteConnection>(_ => new SqliteConnection(connectionString));
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(o => o.SwaggerDoc("v1", new() { Title = "TodoApi", Version = "v1" }));
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
@@ -16,6 +16,7 @@ await EnsureDb(app.Services, app.Logger);
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
+    // BUG: Workaround for framework issue: https://github.com/dotnet/aspnetcore/issues/34146
     app.UseRouting();
 }
 
@@ -101,7 +102,7 @@ app.MapDelete("/todos/{id}", async (int id, SqliteConnection db) =>
     await db.ExecuteAsync("DELETE FROM Todos WHERE Id = @id", new { id }) == 1
         ? Results.NoContent()
         : Results.NotFound())
-    .WithName("Delete")
+    .WithName("DeleteTodo")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 
