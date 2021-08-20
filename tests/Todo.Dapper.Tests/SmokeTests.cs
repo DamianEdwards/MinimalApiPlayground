@@ -42,14 +42,14 @@ public class SmokeTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    class TodoApplication : WebApplicationFactory<TodoApp>
+    class TodoApplication : WebApplicationFactory<Program>
     {
         protected override IHost CreateHost(IHostBuilder builder)
         {
             // Add mock/test services to the builder here
             builder.ConfigureServices(services =>
             {
-                services.AddScoped<SqliteConnection>(sp =>
+                services.AddScoped(sp =>
                 {
                     // Replace SQL Lite with test DB
                     return new SqliteConnection("Data Source=testtodos.db");
