@@ -13,22 +13,6 @@ public static class EndpointConventionBuilderExtensions
         return builder;
     }
 
-    public static MinimalActionEndpointConventionBuilder Accepts<TRequest>(this MinimalActionEndpointConventionBuilder builder, string? contentType = null, params string[] otherContentTypes)
-    {
-        Accepts(builder, typeof(TRequest), contentType, otherContentTypes);
-
-        return builder;
-    }
-
-    public static MinimalActionEndpointConventionBuilder Accepts(this MinimalActionEndpointConventionBuilder builder, Type requestType, string? contentType = null, params string[] otherContentTypes)
-    {
-        builder.WithMetadata(
-            new ConsumesRequestTypeAttribute(requestType, contentType ?? "application/json", otherContentTypes)
-        );
-
-        return builder;
-    }
-
     public static MinimalActionEndpointConventionBuilder AcceptsFormFile(this MinimalActionEndpointConventionBuilder builder, string fieldName)
     {
         builder.WithMetadata(new ConsumesRequestTypeAttribute("multipart/form-data"));
