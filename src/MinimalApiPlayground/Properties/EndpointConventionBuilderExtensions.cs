@@ -5,14 +5,14 @@ namespace Microsoft.AspNetCore.Http;
 
 public static class EndpointConventionBuilderExtensions
 {
-    public static MinimalActionEndpointConventionBuilder WithTags(this MinimalActionEndpointConventionBuilder builder, params string[] tags)
+    public static DelegateEndpointConventionBuilder WithTags(this DelegateEndpointConventionBuilder builder, params string[] tags)
     {
         builder.WithMetadata(new TagsAttribute(tags));
 
         return builder;
     }
 
-    public static MinimalActionEndpointConventionBuilder AcceptsFormFile(this MinimalActionEndpointConventionBuilder builder, string fieldName)
+    public static DelegateEndpointConventionBuilder AcceptsFormFile(this DelegateEndpointConventionBuilder builder, string fieldName)
     {
         builder.WithMetadata(new ConsumesRequestTypeAttribute("multipart/form-data"));
         builder.WithMetadata(new ApiParameterDescription { Name = fieldName, Source = Mvc.ModelBinding.BindingSource.FormFile });
@@ -20,7 +20,7 @@ public static class EndpointConventionBuilderExtensions
         return builder;
     }
 
-    public static MinimalActionEndpointConventionBuilder RequiresAntiforgery(this MinimalActionEndpointConventionBuilder builder)
+    public static DelegateEndpointConventionBuilder RequiresAntiforgery(this DelegateEndpointConventionBuilder builder)
     {
         builder.WithMetadata(new AntiforgeryMetadata());
 

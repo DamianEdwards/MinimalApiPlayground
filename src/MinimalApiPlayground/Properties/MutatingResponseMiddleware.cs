@@ -61,7 +61,7 @@ class MutateResponse : IMutateResponseMetadata
 
 static class MutateResponseMetadataExtensions
 {
-    public static MinimalActionEndpointConventionBuilder MutateResponse(this MinimalActionEndpointConventionBuilder builder, int? statusCode, string? message)
+    public static DelegateEndpointConventionBuilder MutateResponse(this DelegateEndpointConventionBuilder builder, int? statusCode, string? message)
     {
         builder.WithMetadata(new MutateResponse(statusCode, message));
         return builder;

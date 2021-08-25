@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.Configure<JsonOptions>(o => o.JsonSerializerOptions.IncludeFields = true);
 
 var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Data Source=todos.db";
 
@@ -16,20 +15,21 @@ builder.Services.AddSqlite<TodoDb>(connectionString)
 
 var app = builder.Build();
 
+await EnsureDb(app.Services, app.Logger);
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
-    app.UseRouting();
 }
 
 app.UseAntiforgery();
 
 // Error handling
-app.MapGet("/throw", () => { throw new Exception("uh oh"); })
-   .ExcludeFromDescription();
-
 app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
    .ExcludeFromDescription();
+
+app.MapGet("/throw", () => { throw new Exception("uh oh"); })
+   .WithTags("Examples");
 
 // Hello World
 app.MapGet("/", () => "Hello World!")
@@ -56,7 +56,7 @@ app.MapPost("/jsonraw", (JsonElement json) => $"Thanks for the JSON:\r\n{json}")
     .WithTags("Examples");
 
 // Example HTML output from custom IResult
-app.MapGet("/html", (HttpContext context) => AppResults.Html(
+app.MapGet("/html", (HttpContext context) => Results.Extensions.Html(
 @$"<!doctype html>
 <html>
 <head><title>miniHTML</title></head>
@@ -99,6 +99,9 @@ app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
 app.MapGet("/parse/{id}", (Parseable<int> id) =>
     $"Successfully parsed {id.Value} as Parseable<int>!")
     .WithTags("Examples");
+
+// Custom parameter binding via [TargetType].BindAsync
+
 
 // Overriding/mutating response defaults using middleware
 app.UseMutateResponse();
@@ -201,7 +204,7 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return AppResults.Created(todo, contentType);
+        return Results.Extensions.Created(todo, contentType);
     })
     .WithName("AddTodoXmlOrJson")
     .WithTags("TodoApi")
@@ -221,23 +224,9 @@ app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery
     .WithTags("TodoApi")
     .Produces<AntiforgeryTokenSet>();
 
-app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
+app.MapPost("/todos/fromfile", async (JsonFormFile jsonFile, TodoDb db) =>
     {
-        if (!request.HasFormContentType)
-            return Results.BadRequest();
-
-        var form = await request.ReadFormAsync();
-        if (form.Files.Count != 1)
-        {
-            return Results.BadRequest();
-        }
-
-        var file = form.Files[0];
-        if (file.ContentType != "application/json")
-            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
-
-        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        var todos = await JsonSerializer.DeserializeAsync<List<Todo>>(file.OpenReadStream(), jsonOptions);
+        var todos = await jsonFile.DeserializeAsync<List<Todo>>();
 
         if (!(todos?.Count > 0))
             return Results.BadRequest();
@@ -261,7 +250,7 @@ app.MapPost("/todos/fromfile", async (HttpRequest request, TodoDb db) =>
     .WithName("AddTodosFromFile")
     .WithTags("TodoApi")
     .AcceptsFormFile("todofile")
-    .RequiresAntiforgery()
+    //.RequiresAntiforgery()
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status415UnsupportedMediaType)
     .ProducesValidationProblem()
@@ -353,6 +342,14 @@ app.MapDelete("/todos/delete-all", async (TodoDb db) =>
     .Produces<int>();
 
 app.Run();
+
+async Task EnsureDb(IServiceProvider services, ILogger logger)
+{
+    logger.LogInformation("Ensuring database exists and is up to date at connection string '{connectionString}'", connectionString);
+
+    using var db = services.CreateScope().ServiceProvider.GetRequiredService<TodoDb>();
+    await db.Database.MigrateAsync();
+}
 
 public class Todo
 {

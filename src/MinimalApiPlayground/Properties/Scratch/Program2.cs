@@ -35,7 +35,7 @@ static class Program2
             db.Todos.Add(todo);
             await db.SaveChangesAsync();
 
-            return AppResults.CreatedAt(routes.GetTodoById, new { id = todo.Id }, todo);
+            return Results.Extensions.CreatedAt(routes.GetTodoById, new { id = todo.Id }, todo);
         });
 
         app.MapPost("/todolist", (TodoList list) =>

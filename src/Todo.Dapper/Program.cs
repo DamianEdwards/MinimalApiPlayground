@@ -16,8 +16,6 @@ await EnsureDb(app.Services, app.Logger);
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
-    // BUG: Workaround for framework issue: https://github.com/dotnet/aspnetcore/issues/34146
-    app.UseRouting();
 }
 
 app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))

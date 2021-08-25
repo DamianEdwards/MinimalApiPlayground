@@ -18,7 +18,7 @@ public class AntiforgeryMiddleware
     {
         var endpoint = httpContext.GetEndpoint();
 
-        if (endpoint is Endpoint)
+        if (endpoint is Endpoint && !httpContext.Items.ContainsKey(AntiforgeryMiddlewareInvokedKey))
         {
             httpContext.Items.Add(AntiforgeryMiddlewareInvokedKey, AntiforgeryMiddlewareInvokedValue);
 

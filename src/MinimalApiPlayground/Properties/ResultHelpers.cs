@@ -2,16 +2,17 @@
 using System.Net.Mime;
 using System.Text;
 using System.Xml.Serialization;
+using Microsoft.AspNetCore.Http.Result;
 
 namespace Microsoft.AspNetCore.Http;
 
-static class AppResults
+static class ResultsExtensions
 {
-    public static IResult Created<T>(T responseBody, string contentType) => new CreatedWithContentTypeResult<T>(responseBody, contentType);
+    public static IResult Created<T>(this IResultExtensions resultExtensions, T responseBody, string contentType) => new CreatedWithContentTypeResult<T>(responseBody, contentType);
 
-    public static IResult CreatedAt<T>(string routePattern, object routeValues, T responseBody) => new CreatedAtResult(routePattern, routeValues, responseBody);
+    public static IResult CreatedAt<T>(this IResultExtensions resultExtensions, string routePattern, object routeValues, T responseBody) => new CreatedAtResult(routePattern, routeValues, responseBody);
     
-    public static IResult Html(string html) => new HtmlResult(html);
+    public static IResult Html(this IResultExtensions resultExtensions, string html) => new HtmlResult(html);
 
     class CreatedWithContentTypeResult<T> : IResult
     {
