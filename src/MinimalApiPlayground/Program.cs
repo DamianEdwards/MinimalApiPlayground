@@ -89,7 +89,7 @@ app.MapGet("/optionality/{value?}", (string? value, int? number) =>
         }
         return sb.ToString();
     })
-    .WithTags("Examples"); ;
+    .WithTags("Examples");
 
 // Custom parameter binding via [TargetType].TryParse
 app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
@@ -156,10 +156,27 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.Created($"/todo/{todo.Id}", todo); ;
+        return Results.Created($"/todo/{todo.Id}", todo);
     })
     .WithName("AddTodo")
     .WithTags("TodoApi")
+    .ProducesValidationProblem()
+    .Produces<Todo>(StatusCodes.Status201Created);
+
+app.MapPost("/todos/validated-wrapper", async (Validated<Todo> inputTodo, TodoDb db) =>
+    {
+        var (todo, isValid) = inputTodo;
+        if (!isValid)
+            return Results.ValidationProblem(inputTodo.Errors);
+
+        db.Todos.Add(todo);
+        await db.SaveChangesAsync();
+
+        return Results.Created($"/todo/{todo.Id}", todo);
+    })
+    .WithName("AddTodo_ValidatedWrapper")
+    .WithTags("TodoApi")
+    .Accepts<Todo>("application/json")
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 

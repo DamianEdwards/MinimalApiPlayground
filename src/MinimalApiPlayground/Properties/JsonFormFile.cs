@@ -40,7 +40,7 @@ public class JsonFormFile<TValue> : JsonFormFile
 /// </summary>
 public class JsonFormFile
 {
-    private static JsonSerializerOptions _webJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    private static JsonSerializerOptions _webJsonOptions = new (JsonSerializerDefaults.Web);
 
     protected IFormFile? FormFile;
 
