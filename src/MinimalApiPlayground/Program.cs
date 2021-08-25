@@ -163,6 +163,7 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 
+// Example of a custom wrapper type that performs validation
 app.MapPost("/todos/validated-wrapper", async (Validated<Todo> inputTodo, TodoDb db) =>
     {
         var (todo, isValid) = inputTodo;
