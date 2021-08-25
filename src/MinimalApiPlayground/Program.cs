@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
@@ -66,6 +67,29 @@ app.MapGet("/html", (HttpContext context) => AppResults.Html(
 </html>"))
    .ExcludeFromDescription();
 
+// Parameter optionality
+app.MapGet("/optionality/{value?}", (string? value, int? number) =>
+    {
+        var sb = new StringBuilder();
+        if (value is string)
+        {
+            sb.AppendLine($"You provided a value for '{nameof(value)}' of '{value}', thanks!");
+        }
+        else
+        {
+            sb.AppendLine($"You didn't provide a value for '{nameof(value)}', but that's OK!");
+        }
+        if (number != null)
+        {
+            sb.AppendLine($"You provided a value for '{nameof(number)}' of '{number}', thanks!");
+        }
+        else
+        {
+            sb.AppendLine($"You didn't provide a value for '{nameof(number)}', but that's OK!");
+        }
+        return sb.ToString();
+    })
+    .WithTags("Examples"); ;
 
 // Custom parameter binding via [TargetType].TryParse
 app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
