@@ -194,9 +194,7 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
         };
 
         if (todo is null)
-        {
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
-        }
 
         if (!MinimalValidation.TryValidate(todo, out var errors))
             return Results.ValidationProblem(errors);
@@ -224,9 +222,9 @@ app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery
     .WithTags("TodoApi")
     .Produces<AntiforgeryTokenSet>();
 
-app.MapPost("/todos/fromfile", async (JsonFormFile jsonFile, TodoDb db) =>
+app.MapPost("/todos/fromfile", async (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
     {
-        var todos = await jsonFile.DeserializeAsync<List<Todo>>();
+        var todos = todosFile.Value;
 
         if (!(todos?.Count > 0))
             return Results.BadRequest();
@@ -235,9 +233,7 @@ app.MapPost("/todos/fromfile", async (JsonFormFile jsonFile, TodoDb db) =>
         foreach (var todo in todos)
         {
             if (!MinimalValidation.TryValidate(todo, out var errors))
-            {
                 return Results.ValidationProblem(errors.ToDictionary(entry => $"[{todoCount}].{entry.Key}", entry => entry.Value));
-            }
 
             db.Todos.Add(todo);
             todoCount++;
