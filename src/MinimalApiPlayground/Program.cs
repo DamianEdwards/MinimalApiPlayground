@@ -91,7 +91,15 @@ app.MapGet("/optionality/{value?}", (string? value, int? number) =>
     })
     .WithTags("Examples");
 
-// Custom parameter binding via [TargetType].TryParse
+// Custom parameter binding via [TargetType].TryParse()
+app.MapGet("/point", (Point point) => $"Point: {point}")
+    .WithTags("Examples");
+
+// Custom parameter binding via [TargetType].BindAsync()
+app.MapGet("/paged", (PagingData paging) =>
+    $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}")
+    .WithTags("Examples");
+
 app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
     $"Successfully parsed {id.Value} as Wrapped<int>!")
     .WithTags("Examples");
@@ -99,9 +107,6 @@ app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
 app.MapGet("/parse/{id}", (Parseable<int> id) =>
     $"Successfully parsed {id.Value} as Parseable<int>!")
     .WithTags("Examples");
-
-// Custom parameter binding via [TargetType].BindAsync
-
 
 // Overriding/mutating response defaults using middleware
 app.UseMutateResponse();
