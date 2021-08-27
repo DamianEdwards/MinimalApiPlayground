@@ -14,15 +14,20 @@ class Parseable<T> : IParseable<Parseable<T>> where T : IParseable<T>
 
     public T? Value { get; set; }
 
-    public static Parseable<T> Parse(string s, IFormatProvider? provider)
+    public static Parseable<T> Parse(string value, IFormatProvider? provider)
     {
-        throw new NotImplementedException();
+        if (!TryParse(value, provider, out var result))
+        {
+            throw new ArgumentException("Could not parse supplied value.", nameof(value));
+        }
+
+        return result;
     }
 
-    public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out Parseable<T> result)
+    public static bool TryParse([NotNullWhen(true)] string? value, IFormatProvider? provider, out Parseable<T> result)
     {
         T innerValue;
-        var parsed = T.TryParse(s, provider, out innerValue);
+        var parsed = T.TryParse(value, provider, out innerValue);
         if (parsed)
         {
             result = new Parseable<T>(innerValue);

@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MinimalApiPlayground.ModelBinding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,7 @@ var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Da
 builder.Services.AddAntiforgery();
 builder.Services.AddSqlite<TodoDb>(connectionString)
                 .AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.AddParameterBinder<TodoBinder, Todo>();
 
 var app = builder.Build();
 
@@ -107,6 +110,14 @@ app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
 app.MapGet("/parse/{id}", (Parseable<int> id) =>
     $"Successfully parsed {id.Value} as Parseable<int>!")
     .WithTags("Examples");
+
+app.MapPost("/model", (Model<Todo> model) =>
+    {
+        Todo? todo = model;
+        return Results.Ok(todo);
+    })
+    .WithTags("Examples")
+    .Accepts<Todo>("application/json");
 
 // Overriding/mutating response defaults using middleware
 app.UseMutateResponse();
@@ -375,6 +386,18 @@ public class Todo
     public int Id { get; set; }
     [Required] public string? Title { get; set; }
     public bool IsComplete { get; set; }
+}
+
+public class TodoBinder : IParameterBinder<Todo>
+{
+    public async ValueTask<Todo?> BindAsync(HttpContext context, ParameterInfo parameter)
+    {
+        var todo = await context.Request.ReadFromJsonAsync<Todo>(context.RequestAborted);
+
+        if (todo is Todo) todo.Title += $" [Bound from {nameof(TodoBinder)}]";
+
+        return todo;
+    }
 }
 
 class TodoDb : DbContext
