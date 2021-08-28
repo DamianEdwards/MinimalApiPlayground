@@ -117,7 +117,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
             // Swashbuckle defaults to using the controller route value as a tag so add it here
             // if there wasn't more specific tag metadata present
             var controller = api.ActionDescriptor.RouteValues["controller"];
-            if (controller is object)
+            if (controller is not null)
             {
                 tags.Add(controller);
             }
@@ -217,7 +217,7 @@ public class ConsumesRequestTypeRequestFilter : IOperationFilter
             foreach (var md in consumesMetdata)
             {
                 OpenApiSchema? requestSchema = null;
-                if (md.Type is object)
+                if (md.Type is not null)
                 {
                     requestSchema = context.SchemaGenerator.GenerateSchema(md.Type, context.SchemaRepository);
                 }
@@ -236,7 +236,7 @@ public class ConsumesRequestTypeRequestFilter : IOperationFilter
 
         var requiresAntiForgeryToken = antiforgeryMetadata.Count > 0;
 
-        if (requiresAntiForgeryToken && _antiForgeryOptions is AntiforgeryOptions)
+        if (requiresAntiForgeryToken && _antiForgeryOptions is not null)
         {
             if (!antiforgeryMetadata.Any(m => m is IDisableAntiforgery))
             {
@@ -279,7 +279,7 @@ public class ConsumesRequestTypeRequestFilter : IOperationFilter
                 properties.Add(pd.Name, new OpenApiSchema { Type = "string", Format = "binary" });
             }
 
-            if (requiresAntiForgeryToken && _antiForgeryOptions is AntiforgeryOptions)
+            if (requiresAntiForgeryToken && _antiForgeryOptions is not null)
             {
                 //properties.Add(_antiForgeryOptions.FormFieldName, new OpenApiSchema { Type = "string" });
             }

@@ -6,8 +6,10 @@ interface IWrapped<out T> where T : new()
     T Value { get; }
 }
 
-class Wrapped<T> : IWrapped<T> where T : new()
+class Wrapped<T> : IWrapped<T>, IParseable<Wrapped<T>> where T : new()
 {
+    private static readonly Wrapped<T> EmptyWrapped = new(new());
+
     public Wrapped(T value)
     {
         Value = value;
@@ -17,9 +19,19 @@ class Wrapped<T> : IWrapped<T> where T : new()
 
     public T Value { get; }
 
+    public static Wrapped<T> Parse(string value, IFormatProvider? provider)
+    {
+        if (!TryParse(value, provider, out var result))
+        {
+            throw new ArgumentException("Could not parse supplied value.", nameof(value));
+        }
+
+        return result;
+    }
+
     private static readonly Type[] TryParseParamTypes = new[] { typeof(string), typeof(T).MakeByRefType() };
 
-    public static bool TryParse(string? input, out Wrapped<T>? value)
+    public static bool TryParse(string? input, IFormatProvider? provider, out Wrapped<T> value)
     {
         if (typeof(T) == typeof(bool))
         {
@@ -100,13 +112,13 @@ class Wrapped<T> : IWrapped<T> where T : new()
         else if (typeof(T) == typeof(Enum))
         {
             var parsed = Enum.TryParse(typeof(T), input, out var parsedValue);
-            if (parsed && parsedValue is object)
+            if (parsed && parsedValue is not null)
             {
                 value = new Wrapped<T>((T)parsedValue);
             }
             else
             {
-                value = null;
+                value = EmptyWrapped;
             }
             return parsed;
         }
@@ -121,7 +133,7 @@ class Wrapped<T> : IWrapped<T> where T : new()
 
         // Needs a method like: bool TryParse(string input, out T value)
         var tryParseMethod = valueType.GetMethod(nameof(TryParse), BindingFlags.Public | BindingFlags.Static, TryParseParamTypes);
-        if (tryParseMethod is MethodInfo && tryParseMethod.ReturnType == typeof(bool))
+        if (tryParseMethod is not null && tryParseMethod.ReturnType == typeof(bool))
         {
             var parseMethodParams = tryParseMethod.GetParameters();
             if (parseMethodParams.Length == 2)
@@ -144,7 +156,7 @@ class Wrapped<T> : IWrapped<T> where T : new()
             }
         }
 
-        value = null;
+        value = EmptyWrapped;
         return false;
     }
 }

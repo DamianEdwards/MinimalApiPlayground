@@ -31,7 +31,17 @@ app.UseAntiforgery();
 app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
    .ExcludeFromDescription();
 
-app.MapGet("/throw", () => { throw new Exception("uh oh"); })
+app.MapGet("/throw/{statusCode?}", (int? statusCode) => {
+        throw new BadHttpRequestException(statusCode switch
+        {
+            400 => $"{statusCode} Bad request",
+            405 => $"{statusCode} Method not allowed",
+            414 => $"{statusCode} URI too long",
+            415 => $"{statusCode} Unsupported media type",
+            int code when code >= 400 && code < 500 => $"{statusCode} The request could not be processed",
+            _ => throw new Exception("uh oh")
+        }, statusCode ?? 400);
+    })
    .WithTags("Examples");
 
 // Hello World
@@ -65,7 +75,7 @@ app.MapGet("/html", (HttpContext context) => Results.Extensions.Html(
 <head><title>miniHTML</title></head>
 <body>
 <h1>Hello World</h1>
-<p>The time on the server is {DateTime.Now.ToString("O")}</p>
+<p>The time on the server is {DateTime.Now:O}</p>
 </body>
 </html>"))
    .ExcludeFromDescription();
@@ -74,7 +84,7 @@ app.MapGet("/html", (HttpContext context) => Results.Extensions.Html(
 app.MapGet("/optionality/{value?}", (string? value, int? number) =>
     {
         var sb = new StringBuilder();
-        if (value is string)
+        if (value is not null)
         {
             sb.AppendLine($"You provided a value for '{nameof(value)}' of '{value}', thanks!");
         }
@@ -99,9 +109,9 @@ app.MapGet("/point", (Point point) => $"Point: {point}")
     .WithTags("Examples");
 
 // Custom parameter binding via [TargetType].BindAsync()
-app.MapGet("/paged", (PagingData paging) =>
-    $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}")
-    .WithTags("Examples");
+//app.MapGet("/paged", (PagingData paging) =>
+//    $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}")
+//    .WithTags("Examples");
 
 app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
     $"Successfully parsed {id.Value} as Wrapped<int>!")
@@ -394,7 +404,7 @@ public class TodoBinder : IParameterBinder<Todo>
     {
         var todo = await context.Request.ReadFromJsonAsync<Todo>(context.RequestAborted);
 
-        if (todo is Todo) todo.Title += $" [Bound from {nameof(TodoBinder)}]";
+        if (todo is not null) todo.Title += $" [Bound from {nameof(TodoBinder)}]";
 
         return todo;
     }

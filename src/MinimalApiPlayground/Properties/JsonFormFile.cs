@@ -15,14 +15,14 @@ public class JsonFormFile<TValue> : JsonFormFile
 
     public TValue? Value { get; }
 
-    public new static async ValueTask<object?> BindAsync(HttpContext context)
+    public new static async ValueTask<JsonFormFile<TValue>?> BindAsync(HttpContext context)
     {
-        var jsonFile = (JsonFormFile?)await JsonFormFile.BindAsync(context);
+        var jsonFile = await JsonFormFile.BindAsync(context);
         
-        if (jsonFile is JsonFormFile)
+        if (jsonFile is not null)
         {
             var value = await jsonFile.DeserializeAsync<TValue>();
-            if (value is TValue)
+            if (value is not null)
             {
                 return new JsonFormFile<TValue>(value);
             }
@@ -40,7 +40,7 @@ public class JsonFormFile<TValue> : JsonFormFile
 /// </summary>
 public class JsonFormFile
 {
-    private static JsonSerializerOptions _webJsonOptions = new (JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _webJsonOptions = new (JsonSerializerDefaults.Web);
 
     protected IFormFile? FormFile;
 
@@ -54,7 +54,7 @@ public class JsonFormFile
         FormFile = formFile;
     }
 
-    public static async ValueTask<object?> BindAsync(HttpContext context)
+    public static async ValueTask<JsonFormFile?> BindAsync(HttpContext context)
     {
         if (!context.Request.HasFormContentType)
         {
@@ -79,7 +79,7 @@ public class JsonFormFile
 
     public virtual Stream OpenReadStream()
     {
-        if (FormFile is IFormFile)
+        if (FormFile is not null)
         {
             return FormFile.OpenReadStream();
         }

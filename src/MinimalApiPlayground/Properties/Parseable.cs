@@ -26,8 +26,7 @@ class Parseable<T> : IParseable<Parseable<T>> where T : IParseable<T>
 
     public static bool TryParse([NotNullWhen(true)] string? value, IFormatProvider? provider, out Parseable<T> result)
     {
-        T innerValue;
-        var parsed = T.TryParse(value, provider, out innerValue);
+        var parsed = T.TryParse(value, provider, out var innerValue);
         if (parsed)
         {
             result = new Parseable<T>(innerValue);

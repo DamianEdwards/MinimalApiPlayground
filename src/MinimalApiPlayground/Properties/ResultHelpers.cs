@@ -8,15 +8,30 @@ namespace Microsoft.AspNetCore.Http;
 
 static class ResultsExtensions
 {
-    public static IResult Created<T>(this IResultExtensions resultExtensions, T responseBody, string contentType) => new CreatedWithContentTypeResult<T>(responseBody, contentType);
+    public static IResult Created<T>(this IResultExtensions resultExtensions, T responseBody, string contentType)
+    {
+        ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
 
-    public static IResult CreatedAt<T>(this IResultExtensions resultExtensions, string routePattern, object routeValues, T responseBody) => new CreatedAtResult(routePattern, routeValues, responseBody);
-    
-    public static IResult Html(this IResultExtensions resultExtensions, string html) => new HtmlResult(html);
+        return new CreatedWithContentTypeResult<T>(responseBody, contentType);
+    }
+
+    public static IResult CreatedAt<T>(this IResultExtensions resultExtensions, string routePattern, object routeValues, T responseBody)
+    {
+        ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
+
+        return new CreatedAtResult(routePattern, routeValues, responseBody);
+    }
+
+    public static IResult Html(this IResultExtensions resultExtensions, string html)
+    {
+        ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
+
+        return new HtmlResult(html);
+    }
 
     class CreatedWithContentTypeResult<T> : IResult
     {
-        private T _responseBody;
+        private readonly T _responseBody;
         private readonly string _contentType;
 
         public CreatedWithContentTypeResult(T responseBody, string contentType)
@@ -104,7 +119,7 @@ static class ResultsExtensions
             httpContext.Response.StatusCode = StatusCodes.Status201Created;
             httpContext.Response.Headers.Add("Location", url);
 
-            if (_responseBody is object)
+            if (_responseBody is not null)
             {
                 await httpContext.Response.WriteAsJsonAsync(_responseBody, _responseBody.GetType());
             }
@@ -114,8 +129,7 @@ static class ResultsExtensions
         {
             foreach (var endpoint in endpointDataSource.Endpoints)
             {
-                var routeEndpoint = endpoint as RouteEndpoint;
-                if (routeEndpoint != null)
+                if (endpoint is RouteEndpoint routeEndpoint)
                 {
                     if ((routeEndpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Any(method => string.Equals(httpMethod, method)) ?? false)
                         && string.Equals(routeEndpoint.RoutePattern.RawText, routePattern, StringComparison.OrdinalIgnoreCase))

@@ -7,10 +7,8 @@
     /// parameter of type <typeparamref name="TModel"/> to a route handler delegate.
     /// </summary>
     /// <typeparam name="TModel">The parameter type.</typeparam>
-    public class Model<TModel>
+    public class Model<TModel> : IExtensionBinder<Model<TModel>>
     {
-        private static readonly ParameterInfo _emptyParameter = new EmptyParameter();
-
         private readonly TModel? _value;
 
         public Model(TModel? modelValue)
@@ -20,42 +18,40 @@
 
         public TModel? Value => _value;
 
-        private static Model<TModel> Create(TModel? value) => new Model<TModel>(value);
+        private static Model<TModel> Create(TModel? value) => new(value);
 
         public static implicit operator TModel?(Model<TModel> model) => model.Value;
 
         // RequestDelegateFactory discovers this method via reflection and code-gens calls to it to populate
         // parameter values for declared route handler delegates.
-        public static async ValueTask<object?> BindAsync(HttpContext context)
+        public static async ValueTask<Model<TModel>?> BindAsync(HttpContext context, ParameterInfo parameter)
         {
             var logger = context.RequestServices.GetRequiredService<ILogger<Model<TModel>>>();
 
             var binder = LookupBinder(context.RequestServices, logger);
 
-            var value = await binder.BindAsync(context, _emptyParameter);
+            var value = await binder.BindAsync(context, parameter);
 
             return Create(value);
         }
 
+        private const string Template_ResolvedFromDI = nameof(IParameterBinder<object>) + "<{ParameterBinderTargetTypeName}> resolved from DI container.";
+        private const string Template_NotResolvedFromDI = nameof(IParameterBinder<object>) + "<{ParameterBinderTargetTypeName}> could not be resovled from DI container, using default JSON binder.";
+
         private static IParameterBinder<TModel> LookupBinder(IServiceProvider services, ILogger logger)
         {
-            // TODO: Is this lookup worth caching?
             var binder = services.GetService<IParameterBinder<TModel>>();
 
-            if (binder is IParameterBinder<TModel>)
+            if (binder is not null)
             {
-                logger.LogDebug($"{nameof(IParameterBinder<object>)}<{{0}}> resolved from DI container.", typeof(TModel).Name);
+                logger.LogDebug(Template_ResolvedFromDI, typeof(TModel).Name);
 
                 return binder;
             }
 
-            logger.LogDebug($"{nameof(IParameterBinder<object>)}<{{0}}> could not be resovled from DI container, using default JSON binder.", typeof(TModel).Name);
-            return DefaultJsonParameterBinder.Instance;
-        }
+            logger.LogDebug(Template_NotResolvedFromDI, typeof(TModel).Name);
 
-        class EmptyParameter : ParameterInfo
-        {
-            public EmptyParameter() : base() { }
+            return DefaultJsonParameterBinder.Instance;
         }
 
         class DefaultJsonParameterBinder : IParameterBinder<TModel>
@@ -78,8 +74,6 @@
 
     public interface IExtensionBinder<TSelf> where TSelf : IExtensionBinder<TSelf>
     {
-        static abstract bool TryParse(string? value, out TSelf result);
-
         static abstract ValueTask<TSelf?> BindAsync(HttpContext context, ParameterInfo parameter);
     }
 }

@@ -9,7 +9,7 @@ namespace Microsoft.AspNetCore.Http;
 /// <typeparam name="TValue">The type of the object being validated.</typeparam>
 public class Validated<TValue> where TValue : class
 {
-    private static JsonSerializerOptions _jsonSerializerOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = new(JsonSerializerDefaults.Web);
 
     public Validated(TValue value)
     {
@@ -32,7 +32,7 @@ public class Validated<TValue> where TValue : class
         return isValid;
     }
 
-    public static async ValueTask<object?> BindAsync(HttpContext context)
+    public static async ValueTask<Validated<TValue>?> BindAsync(HttpContext context)
     {
         var value = await context.Request.ReadFromJsonAsync<TValue>(_jsonSerializerOptions);
 
