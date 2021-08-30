@@ -1,11 +1,13 @@
-﻿using System.Text.Json;
+﻿using MinimalApiPlayground.ModelBinding;
+using System.Reflection;
+using System.Text.Json;
 
 namespace Microsoft.AspNetCore.Http;
 
 /// <summary>
-/// Represents the first JSON file in a multipart/form-data request (i.e. a form upload) typed as .
+/// Represents a JSON file in a multipart/form-data request (i.e. a form upload).
 /// </summary>
-public class JsonFormFile<TValue> : JsonFormFile
+public class JsonFormFile<TValue> : JsonFormFile, IExtensionBinder<JsonFormFile<TValue>>
 {
     public JsonFormFile(TValue value)
         : base()
@@ -15,9 +17,9 @@ public class JsonFormFile<TValue> : JsonFormFile
 
     public TValue? Value { get; }
 
-    public new static async ValueTask<JsonFormFile<TValue>?> BindAsync(HttpContext context)
+    public new static async ValueTask<JsonFormFile<TValue>?> BindAsync(HttpContext context, ParameterInfo parameter)
     {
-        var jsonFile = await JsonFormFile.BindAsync(context);
+        var jsonFile = await JsonFormFile.BindAsync(context, parameter);
         
         if (jsonFile is not null)
         {
@@ -36,9 +38,9 @@ public class JsonFormFile<TValue> : JsonFormFile
 }
 
 /// <summary>
-/// Represents the first JSON file in a multipart/form-data request (i.e. a form upload).
+/// Represents a JSON file in a multipart/form-data request (i.e. a form upload).
 /// </summary>
-public class JsonFormFile
+public class JsonFormFile : IExtensionBinder<JsonFormFile>
 {
     private static readonly JsonSerializerOptions _webJsonOptions = new (JsonSerializerDefaults.Web);
 
@@ -54,27 +56,25 @@ public class JsonFormFile
         FormFile = formFile;
     }
 
-    public static async ValueTask<JsonFormFile?> BindAsync(HttpContext context)
+    public static async ValueTask<JsonFormFile?> BindAsync(HttpContext context, ParameterInfo parameter)
     {
         if (!context.Request.HasFormContentType)
         {
             return null;
         }
 
+        var fieldName = parameter.Name;
         var form = await context.Request.ReadFormAsync();
-        if (form.Files.Count != 1)
+
+        if (!string.IsNullOrEmpty(fieldName)
+            && (form.Files.GetFile(fieldName) is IFormFile file)
+            && file.ContentType == "application/json")
+
         {
-            return null;
+            return new JsonFormFile(file);
         }
 
-        var file = form.Files[0];
-        if (file.ContentType != "application/json")
-        {
-            return null;
-        }
-
-        var result = new JsonFormFile(file);
-        return result;
+        return null;
     }
 
     public virtual Stream OpenReadStream()

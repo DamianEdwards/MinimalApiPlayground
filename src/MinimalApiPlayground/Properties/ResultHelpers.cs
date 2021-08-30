@@ -8,18 +8,11 @@ namespace Microsoft.AspNetCore.Http;
 
 static class ResultsExtensions
 {
-    public static IResult Created<T>(this IResultExtensions resultExtensions, T responseBody, string contentType)
+    public static IResult CreatedWithContentType<T>(this IResultExtensions resultExtensions, T responseBody, string contentType)
     {
         ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
 
         return new CreatedWithContentTypeResult<T>(responseBody, contentType);
-    }
-
-    public static IResult CreatedAt<T>(this IResultExtensions resultExtensions, string routePattern, object routeValues, T responseBody)
-    {
-        ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
-
-        return new CreatedAtResult(routePattern, routeValues, responseBody);
     }
 
     public static IResult Html(this IResultExtensions resultExtensions, string html)
@@ -54,6 +47,7 @@ static class ResultsExtensions
                     using (var ms = new MemoryStream())
                     {
                         xml.Serialize(ms, _responseBody);
+                        ms.Seek(0, SeekOrigin.Begin);
                         await ms.CopyToAsync(httpContext.Response.Body);
                     }
                     break;
@@ -63,83 +57,6 @@ static class ResultsExtensions
                     await httpContext.Response.WriteAsJsonAsync(_responseBody);
                     break;
             }
-        }
-    }
-
-    class CreatedAtResult : IResult
-    {
-        private readonly string? _url;
-        private readonly string? _routePattern;
-        private readonly object? _routeValues;
-        private readonly object? _responseBody;
-
-        public CreatedAtResult(string url, object? responseBody)
-        {
-            _url = url;
-            _responseBody = responseBody;
-        }
-
-        public CreatedAtResult(string routePattern, object? routeValues, object? responseBody)
-        {
-            _routePattern = routePattern;
-            _routeValues = routeValues;
-            _responseBody = responseBody;
-        }
-
-        public async Task ExecuteAsync(HttpContext httpContext)
-        {
-            string? url;
-
-            if (string.IsNullOrEmpty(_url) && !string.IsNullOrEmpty(_routePattern))
-            {
-                var endpointSources = httpContext.RequestServices.GetRequiredService<IEnumerable<EndpointDataSource>>();
-                RouteEndpoint? targetEndpoint = null;
-                foreach (var endpointSource in endpointSources)
-                {
-                    targetEndpoint = FindRouteEndpoint(endpointSource, HttpMethods.Get!, _routePattern);
-                    if (targetEndpoint != null) break;
-                }
-
-                if (targetEndpoint == null)
-                {
-                    throw new InvalidOperationException($"A route endpoint with pattern {_routePattern} was not found.");
-                }
-
-                var linkGenerator = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
-                var routeValues = new RouteValueDictionary(_routeValues);
-                url = linkGenerator.GetPathByAddress(httpContext, targetEndpoint, routeValues);
-            }
-            else
-            {
-                url = _url;
-            }
-
-            Debug.Assert(!string.IsNullOrEmpty(url));
-
-            httpContext.Response.StatusCode = StatusCodes.Status201Created;
-            httpContext.Response.Headers.Add("Location", url);
-
-            if (_responseBody is not null)
-            {
-                await httpContext.Response.WriteAsJsonAsync(_responseBody, _responseBody.GetType());
-            }
-        }
-
-        private static RouteEndpoint? FindRouteEndpoint(EndpointDataSource endpointDataSource, string httpMethod, string? routePattern)
-        {
-            foreach (var endpoint in endpointDataSource.Endpoints)
-            {
-                if (endpoint is RouteEndpoint routeEndpoint)
-                {
-                    if ((routeEndpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Any(method => string.Equals(httpMethod, method)) ?? false)
-                        && string.Equals(routeEndpoint.RoutePattern.RawText, routePattern, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return routeEndpoint;
-                    }
-                }
-            }
-
-            return null;
         }
     }
 

@@ -1,6 +1,8 @@
 ﻿using System.Globalization;
+using System.Reflection;
+using MinimalApiPlayground.ModelBinding;
 
-public class PagingData
+public class PagingData : IExtensionBinder<PagingData>
 {
     private static readonly string _sortByKey = "sortBy";
     private static readonly string _sortDirectionKey = "sortDir";
@@ -34,7 +36,7 @@ public class PagingData
         return uri;
     }
 
-    public static ValueTask<PagingData?> BindAsync(HttpContext context)
+    public static ValueTask<PagingData?> BindAsync(HttpContext context, ParameterInfo parameter)
     {
         Enum.TryParse<SortDirection>(context.Request.Query[_sortDirectionKey], ignoreCase: true, out var sortDirection);
         int.TryParse(context.Request.Query[_currentPageKey], NumberStyles.None, CultureInfo.InvariantCulture, out var page);

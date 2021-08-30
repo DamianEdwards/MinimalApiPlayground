@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using System.Text.Json;
+using MinimalApiPlayground.ModelBinding;
 
 namespace Microsoft.AspNetCore.Http;
 
@@ -7,7 +9,7 @@ namespace Microsoft.AspNetCore.Http;
 /// Represents a validated object of the type specified by TTarget.
 /// </summary>
 /// <typeparam name="TValue">The type of the object being validated.</typeparam>
-public class Validated<TValue> where TValue : class
+public class Validated<TValue> : IExtensionBinder<Validated<TValue>> where TValue : class
 {
     private static readonly JsonSerializerOptions _jsonSerializerOptions = new(JsonSerializerDefaults.Web);
 
@@ -32,16 +34,18 @@ public class Validated<TValue> where TValue : class
         return isValid;
     }
 
-    public static async ValueTask<Validated<TValue>?> BindAsync(HttpContext context)
+    public static async ValueTask<Validated<TValue>?> BindAsync(HttpContext context, ParameterInfo parameter)
     {
-        var value = await context.Request.ReadFromJsonAsync<TValue>(_jsonSerializerOptions);
-
-        if (value == null)
+        if (!context.Request.HasJsonContentType())
         {
-            return null;
+            throw new BadHttpRequestException(
+                "Request content type was not a recognized JSON content type.",
+                StatusCodes.Status415UnsupportedMediaType);
         }
 
-        return new Validated<TValue>(value);
+        var value = await context.Request.ReadFromJsonAsync<TValue>(_jsonSerializerOptions);
+
+        return value == null ? null : new Validated<TValue>(value);
     }
 
     public void Deconstruct(out TValue value, out bool isValid)

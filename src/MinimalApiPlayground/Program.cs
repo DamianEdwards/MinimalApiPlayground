@@ -109,9 +109,9 @@ app.MapGet("/point", (Point point) => $"Point: {point}")
     .WithTags("Examples");
 
 // Custom parameter binding via [TargetType].BindAsync()
-//app.MapGet("/paged", (PagingData paging) =>
-//    $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}")
-//    .WithTags("Examples");
+app.MapGet("/paged", (PagingData paging) =>
+    $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}")
+    .WithTags("Examples");
 
 app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
     $"Successfully parsed {id.Value} as Wrapped<int>!")
@@ -246,7 +246,7 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.Extensions.Created(todo, contentType);
+        return Results.Extensions.CreatedWithContentType(todo, contentType);
     })
     .WithName("AddTodoXmlOrJson")
     .WithTags("TodoApi")
@@ -255,7 +255,7 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created, "application/json", "application/xml");
 
-// Example of manually supporting file upload (comment out AntiForgery lines to allow POST from browser)
+// Example of manually supporting file upload (comment out RequiresAntiforgery() line to allow POST from browser)
 app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery) =>
     {
         var tokenSet = antiforgery.GetTokens(httpContext);
@@ -289,7 +289,7 @@ app.MapPost("/todos/fromfile", async (JsonFormFile<List<Todo>> todosFile, TodoDb
     })
     .WithName("AddTodosFromFile")
     .WithTags("TodoApi")
-    .AcceptsFormFile("todofile")
+    .AcceptsFormFile("todosFile")
     //.RequiresAntiforgery()
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status415UnsupportedMediaType)
@@ -402,6 +402,13 @@ public class TodoBinder : IParameterBinder<Todo>
 {
     public async ValueTask<Todo?> BindAsync(HttpContext context, ParameterInfo parameter)
     {
+        if (!context.Request.HasJsonContentType())
+        {
+            throw new BadHttpRequestException(
+                "Request content type was not a recognized JSON content type.",
+                StatusCodes.Status415UnsupportedMediaType);
+        }
+
         var todo = await context.Request.ReadFromJsonAsync<Todo>(context.RequestAborted);
 
         if (todo is not null) todo.Title += $" [Bound from {nameof(TodoBinder)}]";

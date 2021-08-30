@@ -62,6 +62,13 @@
 
             public async ValueTask<TModel?> BindAsync(HttpContext context, ParameterInfo parameter)
             {
+                if (!context.Request.HasJsonContentType())
+                {
+                    throw new BadHttpRequestException(
+                        "Request content type was not a recognized JSON content type.",
+                        StatusCodes.Status415UnsupportedMediaType);
+                }
+
                 return await context.Request.ReadFromJsonAsync<TModel>(context.RequestAborted);
             }
         }
@@ -70,11 +77,6 @@
     public interface IParameterBinder<T>
     {
         ValueTask<T?> BindAsync(HttpContext context, ParameterInfo parameter);
-    }
-
-    public interface IExtensionBinder<TSelf> where TSelf : IExtensionBinder<TSelf>
-    {
-        static abstract ValueTask<TSelf?> BindAsync(HttpContext context, ParameterInfo parameter);
     }
 }
 

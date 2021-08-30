@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Antiforgery;
-using Microsoft.AspNetCore.Http.Metadata;
+﻿using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -7,10 +9,7 @@ using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using System.Collections.Concurrent;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
+
 
 [assembly:HostingStartup(typeof(OpenApiConfiguration))]
 
@@ -43,7 +42,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         services.AddSwaggerGen(options =>
         {
             //options.RequestBodyFilter<ConsumesRequestTypeRequestFilter>();
-            
+            options.SchemaFilter<XmlSchemaFilter>();
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
     }
@@ -189,7 +188,32 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
     }
 }
 
-public class ConsumesRequestTypeRequestFilter : IOperationFilter
+internal class XmlSchemaFilter : ISchemaFilter
+{
+    public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+    {
+        if (string.Equals(schema.Type, "object", StringComparison.OrdinalIgnoreCase))
+        {
+            if (context.Type == typeof(Todo))
+            {
+                foreach (var prop in schema.Properties)
+                {
+                    // Convert from camelCase to PascalCase
+                    if (prop.Key.Length > 0 && Char.IsLower(prop.Key[0]))
+                    {
+                        prop.Value.Xml = new OpenApiXml
+                        {
+                            Name = Char.ToUpper(prop.Key[0]) + prop.Key[1..]
+                        };
+                    }
+                    
+                }
+            }
+        }
+    }
+}
+
+internal class ConsumesRequestTypeRequestFilter : IOperationFilter
 {
     private readonly AntiforgeryOptions? _antiForgeryOptions;
 

@@ -23,10 +23,11 @@ static class Program2
         };
 
         app.MapGet(routes.GetTodoById, async (int id, TodoDb db) =>
-        {
-            return await db.Todos.FindAsync(id) is Todo todo
-                ? Results.Ok(todo) : Results.NotFound();
-        });
+            {
+                return await db.Todos.FindAsync(id) is Todo todo
+                    ? Results.Ok(todo) : Results.NotFound();
+            })
+            .WithName(nameof(routes.GetTodoById));
 
         app.MapPost(routes.Todos, async (Todo todo, TodoDb db) =>
         {
@@ -35,7 +36,7 @@ static class Program2
             db.Todos.Add(todo);
             await db.SaveChangesAsync();
 
-            return Results.Extensions.CreatedAt(routes.GetTodoById, new { id = todo.Id }, todo);
+            return Results.CreatedAtRoute(nameof(routes.GetTodoById), new { id = todo.Id }, todo);
         });
 
         app.MapPost("/todolist", (TodoList list) =>

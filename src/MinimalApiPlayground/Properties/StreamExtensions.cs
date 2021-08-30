@@ -5,9 +5,11 @@ namespace System.IO;
 
 public static class StreamExtensions
 {
+    private static readonly JsonSerializerOptions _webDefaults = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
     public static async ValueTask<T?> ReadAsJsonAsync<T>(this Stream stream) where T : new()
     {
-        T? result = await JsonSerializer.DeserializeAsync<T>(stream);
+        T? result = await JsonSerializer.DeserializeAsync<T>(stream, _webDefaults);
         return result;
     }
 
