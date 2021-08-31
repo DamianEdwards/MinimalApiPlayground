@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="todos-invalid.json" />
+    <None Remove="todos-valid.json" />
+    <Content Include="todos-invalid.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="todos-valid.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.0-rc.1.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="xunit" Version="2.4.1" />
@@ -24,5 +31,4 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MinimalApiPlayground\MinimalApiPlayground.csproj" />
   </ItemGroup>
-
 </Project>

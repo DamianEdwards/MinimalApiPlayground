@@ -1,6 +1,7 @@
-﻿using MinimalApiPlayground.ModelBinding;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.Json;
+using MinimalApiPlayground.ModelBinding;
 
 namespace Microsoft.AspNetCore.Http;
 
@@ -9,8 +10,8 @@ namespace Microsoft.AspNetCore.Http;
 /// </summary>
 public class JsonFormFile<TValue> : JsonFormFile, IExtensionBinder<JsonFormFile<TValue>>
 {
-    public JsonFormFile(TValue value)
-        : base()
+    public JsonFormFile(TValue value, JsonSerializerOptions jsonSerializerOptions)
+        : base(jsonSerializerOptions)
     {
         Value = value;
     }
@@ -26,7 +27,7 @@ public class JsonFormFile<TValue> : JsonFormFile, IExtensionBinder<JsonFormFile<
             var value = await jsonFile.DeserializeAsync<TValue>();
             if (value is not null)
             {
-                return new JsonFormFile<TValue>(value);
+                return new JsonFormFile<TValue>(value, jsonFile.JsonSerializerOptions);
             }
         }
 
@@ -42,19 +43,22 @@ public class JsonFormFile<TValue> : JsonFormFile, IExtensionBinder<JsonFormFile<
 /// </summary>
 public class JsonFormFile : IExtensionBinder<JsonFormFile>
 {
-    private static readonly JsonSerializerOptions _webJsonOptions = new (JsonSerializerDefaults.Web);
+    internal static readonly JsonSerializerOptions DefaultSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     protected IFormFile? FormFile;
 
-    protected JsonFormFile()
+    protected internal JsonFormFile(JsonSerializerOptions jsonSerializerOptions)
     {
-
+        JsonSerializerOptions = jsonSerializerOptions;
     }
 
-    public JsonFormFile(IFormFile formFile)
+    public JsonFormFile(IFormFile formFile, JsonSerializerOptions jsonSerializerOptions)
+        : this(jsonSerializerOptions)
     {
         FormFile = formFile;
     }
+
+    public JsonSerializerOptions JsonSerializerOptions { get; init; }
 
     public static async ValueTask<JsonFormFile?> BindAsync(HttpContext context, ParameterInfo parameter)
     {
@@ -71,7 +75,8 @@ public class JsonFormFile : IExtensionBinder<JsonFormFile>
             && file.ContentType == "application/json")
 
         {
-            return new JsonFormFile(file);
+            var jsonOptions = context.RequestServices.GetService<JsonOptions>()?.SerializerOptions ?? DefaultSerializerOptions;
+            return new JsonFormFile(file, jsonOptions);
         }
 
         return null;
@@ -87,9 +92,9 @@ public class JsonFormFile : IExtensionBinder<JsonFormFile>
         throw new InvalidOperationException("Cannot open the file read stream before BindAsync is called.");
     }
 
-    public ValueTask<T?> DeserializeAsync<T>() => DeserializeAsync<T>(_webJsonOptions);
+    public ValueTask<T?> DeserializeAsync<T>() => DeserializeAsync<T>(JsonSerializerOptions);
 
-    public async ValueTask<T?> DeserializeAsync<T>(JsonSerializerOptions? jsonOptions = null)
+    public async ValueTask<T?> DeserializeAsync<T>(JsonSerializerOptions jsonOptions)
     {
         using var fileStream = OpenReadStream();
         return await JsonSerializer.DeserializeAsync<T>(fileStream, jsonOptions);

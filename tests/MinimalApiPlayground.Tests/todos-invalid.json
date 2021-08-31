@@ -1,0 +1,10 @@
+[
+  {
+    "title": "My Todo from a file!",
+    "isComplete": false
+  },
+  {
+    "title": "",
+    "isComplete": false
+  }
+]
