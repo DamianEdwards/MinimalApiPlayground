@@ -26,6 +26,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\dotnet.yml = .github\workflows\dotnet.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalApiPlayground.Tests", "tests\MinimalApiPlayground.Tests\MinimalApiPlayground.Tests.csproj", "{1643B8F9-E75F-4A9D-BF0B-4321C289D023}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,6 +50,10 @@ Global
 		{0CF57487-1D45-463D-8888-327ED49D587C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0CF57487-1D45-463D-8888-327ED49D587C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0CF57487-1D45-463D-8888-327ED49D587C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1643B8F9-E75F-4A9D-BF0B-4321C289D023}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1643B8F9-E75F-4A9D-BF0B-4321C289D023}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1643B8F9-E75F-4A9D-BF0B-4321C289D023}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1643B8F9-E75F-4A9D-BF0B-4321C289D023}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -55,6 +61,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{0CF57487-1D45-463D-8888-327ED49D587C} = {943F33A2-9ADD-414D-86EA-18791AC22B59}
 		{295B6F6A-CE80-4B6E-B170-88E2702AFA29} = {D6C7B342-0736-4449-907D-0AA6ED39C7C5}
+		{1643B8F9-E75F-4A9D-BF0B-4321C289D023} = {943F33A2-9ADD-414D-86EA-18791AC22B59}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A5280A9C-84E5-4FCB-826A-00869EF0B4D8}

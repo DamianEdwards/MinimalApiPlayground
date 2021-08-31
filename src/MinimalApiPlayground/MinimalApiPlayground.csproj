@@ -15,12 +15,16 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="6.0.0-rc.1.*" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.1.5" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.1" />
     <PackageReference Include="MinimalValidation" Version="0.1.0-pre" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(EnablePreviewFeatures)' == 'True'">
     <PackageReference Include="System.Runtime.Experimental" Version="6.0.0-rc.1.*" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MinimalApiPlayground.Tests" />
+  </ItemGroup>
+
 </Project>
