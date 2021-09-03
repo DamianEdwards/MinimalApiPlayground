@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(EnablePreviewFeatures)' == 'True'">
-    <PackageReference Include="System.Runtime.Experimental" Version="6.0.0-rc.2.*" />
+    <PackageReference Include="System.Runtime.Experimental" Version="6.0.0-rc.*" />
   </ItemGroup>
 
   <ItemGroup>
