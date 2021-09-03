@@ -19,6 +19,10 @@ builder.Services.AddSqlite<TodoDb>(connectionString)
                 .AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddParameterBinder<TodoBinder, Todo>();
 
+
+// This enables MVC's model binders
+builder.Services.AddMvcCore();
+
 var app = builder.Build();
 
 await EnsureDb(app.Services, app.Logger);
@@ -122,6 +126,11 @@ app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
 
 app.MapGet("/parse/{id}", (Parseable<int> id) =>
     $"Successfully parsed {id.Value} as Parseable<int>!")
+    .WithTags("Examples");
+
+// Using MVC's model binding logic
+app.MapGet("/paged2", (ModelBinder<PagedData> paging) =>
+    $"model: {paging.Model}, valid: {paging.ModelState.IsValid}")
     .WithTags("Examples");
 
 app.MapPost("/model", (Model<Todo> model) =>
