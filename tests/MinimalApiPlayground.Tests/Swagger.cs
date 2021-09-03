@@ -22,11 +22,11 @@ namespace MinimalApiPlayground.Tests
             await using var application = new PlaygroundApplication();
 
 
-            var client = application.CreateClient();
+            var client = application.CreateClient(new () { AllowAutoRedirect = false });
             var response = await client.GetAsync("/docs");
 
             Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-            Assert.Equal("/docs/", response.Headers.Location?.ToString());
+            Assert.Equal("/docs/", response.Headers.Location?.ToString()); ;
         }
     }
 }
