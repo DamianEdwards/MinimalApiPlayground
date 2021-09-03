@@ -5,7 +5,7 @@ namespace MinimalApiPlayground.Tests
 {
     public partial class Swagger
     {
-        [Fact(Skip = "https://github.com/dotnet/aspnetcore/issues/35956")]
+        [Fact]
         public async Task SwaggerUI_Responds_OK_In_Development()
         {
             await using var application = new PlaygroundApplication();
@@ -16,7 +16,7 @@ namespace MinimalApiPlayground.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
-        [Fact(Skip = "https://github.com/dotnet/aspnetcore/issues/35956")]
+        [Fact]
         public async Task SwaggerUI_Redirects_To_Canonical_Path_In_Development()
         {
             await using var application = new PlaygroundApplication();
