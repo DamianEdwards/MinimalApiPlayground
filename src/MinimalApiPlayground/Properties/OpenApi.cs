@@ -99,31 +99,31 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         }
     }
 
-    private static IList<string> TagsSelector(ApiDescription api)
-    {
-        var tags = new List<string>();
+    // private static IList<string> TagsSelector(ApiDescription api)
+    // {
+    //     var tags = new List<string>();
 
-        foreach (var em in api.ActionDescriptor.EndpointMetadata)
-        {
-            if (em is ITagsMetadata itm)
-            {
-                tags.AddRange(itm.Tags);
-            }
-        }
+    //     foreach (var em in api.ActionDescriptor.EndpointMetadata)
+    //     {
+    //         if (em is ITagsMetadata itm)
+    //         {
+    //             tags.AddRange(itm.Tags);
+    //         }
+    //     }
 
-        if (tags.Count == 0)
-        {
-            // Swashbuckle defaults to using the controller route value as a tag so add it here
-            // if there wasn't more specific tag metadata present
-            var controller = api.ActionDescriptor.RouteValues["controller"];
-            if (controller is not null)
-            {
-                tags.Add(controller);
-            }
-        }
+    //     if (tags.Count == 0)
+    //     {
+    //         // Swashbuckle defaults to using the controller route value as a tag so add it here
+    //         // if there wasn't more specific tag metadata present
+    //         var controller = api.ActionDescriptor.RouteValues["controller"];
+    //         if (controller is not null)
+    //         {
+    //             tags.Add(controller);
+    //         }
+    //     }
 
-        return tags;
-    }
+    //     return tags;
+    // }
 
     private static string SchemaIdSelector(Type modelType)
     {
