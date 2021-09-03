@@ -59,7 +59,7 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         public void Configure(SwaggerGenOptions options)
         {
             options.OperationFilter<ConsumesRequestTypeRequestFilter>();
-            options.TagActionsBy(TagsSelector);
+            //options.TagActionsBy(TagsSelector);
             options.CustomSchemaIds(SchemaIdSelector);
             options.CustomOperationIds(OperationIdSelector);
             options.SwaggerDoc(Version, new OpenApiInfo { Title = _hostingEnvironment.ApplicationName, Version = Version });

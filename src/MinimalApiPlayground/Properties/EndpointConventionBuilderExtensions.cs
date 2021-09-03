@@ -5,13 +5,6 @@ namespace Microsoft.AspNetCore.Http;
 
 public static class EndpointConventionBuilderExtensions
 {
-    public static DelegateEndpointConventionBuilder WithTags(this DelegateEndpointConventionBuilder builder, params string[] tags)
-    {
-        builder.WithMetadata(new TagsAttribute(tags));
-
-        return builder;
-    }
-
     public static DelegateEndpointConventionBuilder AcceptsFormFile(this DelegateEndpointConventionBuilder builder, string fieldName)
     {
         builder.WithMetadata(new ConsumesRequestTypeAttribute("multipart/form-data"));
