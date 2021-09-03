@@ -10,7 +10,7 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.1" />
     <PackageReference Include="MinimalValidation" Version="0.1.0-pre" />
     <PackageReference Include="Dapper" Version="2.0.90" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.0-rc.1.*" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.0-rc.2.*" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.0.5" />
   </ItemGroup>
 
