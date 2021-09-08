@@ -397,10 +397,12 @@ app.Run();
 
 async Task EnsureDb(IServiceProvider services, ILogger logger)
 {
-    logger.LogInformation("Ensuring database exists and is up to date at connection string '{connectionString}'", connectionString);
-
     using var db = services.CreateScope().ServiceProvider.GetRequiredService<TodoDb>();
-    await db.Database.MigrateAsync();
+    if (db.Database.IsRelational())
+    {
+        logger.LogInformation("Ensuring database exists and is up to date at connection string '{connectionString}'", connectionString);
+        await db.Database.MigrateAsync();
+    }
 }
 
 public class Todo

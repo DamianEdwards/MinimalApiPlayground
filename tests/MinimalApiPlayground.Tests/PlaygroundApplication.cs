@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
@@ -27,8 +27,11 @@ namespace MinimalApiPlayground.Tests
             {
                 services.AddScoped(sp =>
                 {
-                    // Replace SQL Lite with test DB
-                    return new SqliteConnection("Data Source=testtodos.db");
+                    // Replace SQLite with in-memory database for tests
+                    return new DbContextOptionsBuilder<TodoDb>()
+                        .UseInMemoryDatabase("Tests")
+                        .UseApplicationServiceProvider(sp)
+                        .Options;
                 });
             });
 
