@@ -115,6 +115,10 @@ app.MapGet("/optionality/{value?}", (string? value, int? number) =>
 app.MapGet("/point", (Point point) => $"Point: {point}")
     .WithTags("Examples");
 
+app.MapGet("/parse/{id}", (Parseable<int> id) =>
+    $"Successfully parsed {id.Value} as Parseable<int>!")
+    .WithTags("Examples");
+
 // Custom parameter binding via [TargetType].BindAsync()
 app.MapGet("/paged", (PagingData paging) =>
     $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}")
@@ -124,15 +128,6 @@ app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
     $"Successfully parsed {id.Value} as Wrapped<int>!")
     .WithTags("Examples");
 
-app.MapGet("/parse/{id}", (Parseable<int> id) =>
-    $"Successfully parsed {id.Value} as Parseable<int>!")
-    .WithTags("Examples");
-
-// Using MVC's model binding logic
-app.MapGet("/paged2", (ModelBinder<PagedData> paging) =>
-    $"model: {paging.Model}, valid: {paging.ModelState.IsValid}")
-    .WithTags("Examples");
-
 app.MapPost("/model", (Model<Todo> model) =>
     {
         Todo? todo = model;
@@ -140,6 +135,11 @@ app.MapPost("/model", (Model<Todo> model) =>
     })
     .WithTags("Examples")
     .Accepts<Todo>("application/json");
+
+// Using MVC's model binding logic via a generic wrapping shim
+app.MapGet("/paged2", (ModelBinder<PagedData> paging) =>
+    $"model: {paging.Model}, valid: {paging.ModelState.IsValid}")
+    .WithTags("Examples");
 
 // Overriding/mutating response defaults using middleware
 app.UseMutateResponse();

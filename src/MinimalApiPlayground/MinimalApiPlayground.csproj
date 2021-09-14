@@ -9,18 +9,18 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.0-rc.1.*" />
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.0.5" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.0-rc.1.*">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="6.0.0-rc.1.*" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.1" />
-    <PackageReference Include="MinimalValidation" Version="0.1.0-pre" />
+    <PackageReference Include="MinimalValidation.AspNetCore" Version="0.2.0-pre.*" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(EnablePreviewFeatures)' == 'True'">
-    <PackageReference Include="System.Runtime.Experimental" Version="6.0.0-rc.1.*" />
+    <PackageReference Include="System.Runtime.Experimental" Version="6.0.0-*" />
   </ItemGroup>
 
   <ItemGroup>
