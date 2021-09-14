@@ -9,7 +9,7 @@ using MinimalApiPlayground.ModelBinding;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Data Source=todos.db";
+var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Data Source=todos.db;Cache=Shared";
 
 // Customize the JSON serialization options used by minimal with following line
 //builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o => o.SerializerOptions.IncludeFields = true);

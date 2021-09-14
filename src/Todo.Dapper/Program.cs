@@ -4,7 +4,7 @@ using Dapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("TodoDb") ?? "Data Source=todos.db";
+var connectionString = builder.Configuration.GetConnectionString("TodoDb") ?? "Data Source=todos.db;Cache=Shared";
 builder.Services.AddScoped(_ => new SqliteConnection(connectionString));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -116,7 +116,7 @@ async Task EnsureDb(IServiceProvider services, ILogger logger)
 
     using var db = services.CreateScope().ServiceProvider.GetRequiredService<SqliteConnection>();
     var sql = $@"CREATE TABLE IF NOT EXISTS Todos (
-                  {nameof(Todo.Id)} INTEGER PRIMARY KEY AUTOINCREMENT,
+                  {nameof(Todo.Id)} INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                   {nameof(Todo.Title)} TEXT NOT NULL,
                   {nameof(Todo.IsComplete)} INTEGER DEFAULT 0 NOT NULL CHECK({nameof(Todo.IsComplete)} IN (0, 1))
                  );";
