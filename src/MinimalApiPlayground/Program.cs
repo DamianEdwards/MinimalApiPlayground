@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MinimalApiPlayground.ModelBinding;
@@ -35,7 +36,12 @@ if (!app.Environment.IsDevelopment())
 app.UseAntiforgery();
 
 // Error handling
-app.MapGet("/error", () => Results.Problem("An error occurred.", statusCode: 500))
+app.MapGet("/error", (HttpContext context) =>
+    context.Features.Get<IExceptionHandlerFeature>()?.Error switch
+    {
+        BadHttpRequestException ex => Results.Problem(ex.Message, statusCode: ex.StatusCode),
+        _ => Results.Problem("An error occurred")
+    })
    .ExcludeFromDescription();
 
 app.MapGet("/throw/{statusCode?}", (int? statusCode) => {
@@ -45,7 +51,7 @@ app.MapGet("/throw/{statusCode?}", (int? statusCode) => {
             405 => $"{statusCode} Method not allowed",
             414 => $"{statusCode} URI too long",
             415 => $"{statusCode} Unsupported media type",
-            int code when code >= 400 && code < 500 => $"{statusCode} The request could not be processed",
+            >= 400 and < 500 => $"{statusCode} The request could not be processed",
             _ => throw new Exception("uh oh")
         }, statusCode ?? 400);
     })
@@ -64,16 +70,17 @@ app.MapGet("/goodbye", () => new { Goodbye = "World" })
    .WithTags("Examples");
 
 app.MapGet("/hellofunc", Endpoints.HelloWorldFunc)
+   .WithName(nameof(Endpoints.HelloWorldFunc))
    .WithTags("Examples");
 
 // Working with raw JSON
 app.MapGet("/jsonraw", () => JsonDocument.Parse("{ \"Id\": 123, \"Name\": \"Example\" }"))
-    .WithName("RawJsonOutput")
-    .WithTags("Examples");
+   .WithName("RawJsonOutput")
+   .WithTags("Examples");
 
 app.MapPost("/jsonraw", (JsonElement json) => $"Thanks for the JSON:\r\n{json}")
-    .WithName("RawJsonInput")
-    .WithTags("Examples");
+   .WithName("RawJsonInput")
+   .WithTags("Examples");
 
 // Example HTML output from custom IResult
 app.MapGet("/html", (HttpContext context) => Results.Extensions.Html(
@@ -225,6 +232,7 @@ app.MapPost("/todos-local-func", AddTodoFunc);
 // EndpointName set automatically to name of method
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
+[EndpointName(nameof(AddTodoFunc))]
 [Tags("TodoApi")]
 async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 {
