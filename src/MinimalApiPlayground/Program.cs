@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using MinimalApiPlayground.ModelBinding;
 
@@ -16,10 +17,10 @@ var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Da
 //builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o => o.SerializerOptions.IncludeFields = true);
 
 builder.Services.AddAntiforgery();
-builder.Services.AddSqlite<TodoDb>(connectionString)
-                .AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.AddSqlite<TodoDb>(connectionString);
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.AddProblemDetailsDeveloperPageExceptionFilter();
 builder.Services.AddParameterBinder<TodoBinder, Todo>();
-
 
 // This enables MVC's model binders
 builder.Services.AddMvcCore();
@@ -40,20 +41,19 @@ app.MapGet("/error", (HttpContext context) =>
     context.Features.Get<IExceptionHandlerFeature>()?.Error switch
     {
         BadHttpRequestException ex => Results.Problem(ex.Message, statusCode: ex.StatusCode),
-        _ => Results.Problem("An error occurred")
+        _ => Results.Problem("Internal server error")
     })
    .ExcludeFromDescription();
 
-app.MapGet("/throw/{statusCode?}", (int? statusCode) => {
-        throw new BadHttpRequestException(statusCode switch
+app.MapGet("/throw/{statusCode?}", (int? statusCode) =>
+    {
+        throw statusCode switch
         {
-            400 => $"{statusCode} Bad request",
-            405 => $"{statusCode} Method not allowed",
-            414 => $"{statusCode} URI too long",
-            415 => $"{statusCode} Unsupported media type",
-            >= 400 and < 500 => $"{statusCode} The request could not be processed",
+            >= 400 and < 500 => new BadHttpRequestException(
+                $"{statusCode} {ReasonPhrases.GetReasonPhrase(statusCode.Value)}",
+                statusCode.Value),
             _ => throw new Exception("uh oh")
-        }, statusCode ?? 400);
+        };
     })
    .WithTags("Examples");
 
