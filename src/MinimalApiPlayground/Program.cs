@@ -148,6 +148,12 @@ app.MapGet("/paged2", (ModelBinder<PagedData> paging) =>
     $"model: {paging.Model}, valid: {paging.ModelState.IsValid}")
     .WithTags("Examples");
 
+// Using type converters this will bind the redirect_uri query string parameter
+// to a Uri object.
+app.MapGet("/redirect", ([FromQuery(Name = "redirect_uri")] TypeConverter<Uri> uri) =>
+    $"The redirect uri = {uri}")
+    .WithTags("Examples");
+
 // Overriding/mutating response defaults using middleware
 app.UseMutateResponse();
 
