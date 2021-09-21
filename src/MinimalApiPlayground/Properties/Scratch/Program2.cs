@@ -31,7 +31,7 @@ static class Program2
 
         app.MapPost(routes.Todos, async (Todo todo, TodoDb db) =>
         {
-            if (!MinimalValidation.TryValidate(todo, out var errors)) return Results.BadRequest(errors);
+            if (!MiniValidation.TryValidate(todo, out var errors)) return Results.BadRequest(errors);
 
             db.Todos.Add(todo);
             await db.SaveChangesAsync();
@@ -41,7 +41,7 @@ static class Program2
 
         app.MapPost("/todolist", (TodoList list) =>
         {
-            if (!MinimalValidation.TryValidate(list, out var errors))
+            if (!MiniValidation.TryValidate(list, out var errors))
                 return Results.ValidationProblem(errors);
 
             return Results.Ok();
@@ -52,7 +52,7 @@ static class Program2
 
         app.MapPost("/todocycle", (TodoList list) =>
         {
-            if (!MinimalValidation.TryValidate(list, out var errors))
+            if (!MiniValidation.TryValidate(list, out var errors))
                 return Results.ValidationProblem(errors);
 
             return Results.Ok();

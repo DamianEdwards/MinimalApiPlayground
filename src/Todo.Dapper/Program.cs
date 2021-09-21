@@ -53,7 +53,7 @@ app.MapGet("/todos/{id}", async (int id, SqliteConnection db) =>
 
 app.MapPost("/todos", async (Todo todo, SqliteConnection db) =>
     {
-        if (!MinimalValidation.TryValidate(todo, out var errors))
+        if (!MiniValidation.TryValidate(todo, out var errors))
             return Results.ValidationProblem(errors);
 
         var newTodo = await db.QuerySingleAsync<Todo>(
@@ -68,7 +68,7 @@ app.MapPost("/todos", async (Todo todo, SqliteConnection db) =>
 app.MapPut("/todos/{id}", async (int id, Todo todo, SqliteConnection db) =>
     {
         todo.Id = id;
-        if (!MinimalValidation.TryValidate(todo, out var errors))
+        if (!MiniValidation.TryValidate(todo, out var errors))
             return Results.ValidationProblem(errors);
 
         return await db.ExecuteAsync("UPDATE Todos SET Title = @Title, IsComplete = @IsComplete WHERE Id = @Id", todo) == 1

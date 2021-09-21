@@ -195,7 +195,7 @@ app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     {
-        if (!MinimalValidation.TryValidate(todo, out var errors))
+        if (!MiniValidation.TryValidate(todo, out var errors))
             return Results.ValidationProblem(errors);
 
         db.Todos.Add(todo);
@@ -236,7 +236,7 @@ app.MapPost("/todos-local-func", AddTodoFunc);
 [Tags("TodoApi")]
 async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 {
-    if (!MinimalValidation.TryValidate(todo, out var errors))
+    if (!MiniValidation.TryValidate(todo, out var errors))
         return Results.ValidationProblem(errors);
 
     db.Todos.Add(todo);
@@ -260,7 +260,7 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
         if (todo is null)
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
 
-        if (!MinimalValidation.TryValidate(todo, out var errors))
+        if (!MiniValidation.TryValidate(todo, out var errors))
             return Results.ValidationProblem(errors);
 
         db.Todos.Add(todo);
@@ -296,7 +296,7 @@ app.MapPost("/todos/fromfile", async (JsonFormFile<List<Todo>> todosFile, TodoDb
         var todoCount = 0;
         foreach (var todo in todos)
         {
-            if (!MinimalValidation.TryValidate(todo, out var errors))
+            if (!MiniValidation.TryValidate(todo, out var errors))
                 return Results.ValidationProblem(errors.ToDictionary(entry => $"[{todoCount}].{entry.Key}", entry => entry.Value));
 
             db.Todos.Add(todo);
@@ -318,7 +318,7 @@ app.MapPost("/todos/fromfile", async (JsonFormFile<List<Todo>> todosFile, TodoDb
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     {
-        if (!MinimalValidation.TryValidate(inputTodo, out var errors))
+        if (!MiniValidation.TryValidate(inputTodo, out var errors))
             return Results.ValidationProblem(errors);
 
         if (await db.Todos.FindAsync(id) is Todo todo)
