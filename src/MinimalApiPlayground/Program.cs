@@ -433,7 +433,7 @@ public class TodoBinder : IParameterBinder<Todo>
 
         var todo = await context.Request.ReadFromJsonAsync<Todo>(context.RequestAborted);
 
-        if (todo is not null) todo.Title += $" [Bound from {nameof(TodoBinder)}]";
+        if (todo?.Title is not null) todo.Title += $" [Bound from {nameof(TodoBinder)}]";
 
         return todo;
     }
