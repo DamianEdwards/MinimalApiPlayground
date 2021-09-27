@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
+using MiniValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,7 +54,7 @@ app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
 
 app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     {
-        if (!MiniValidation.TryValidate(todo, out var errors))
+        if (!MiniValidator.TryValidate(todo, out var errors))
             return Results.ValidationProblem(errors);
 
         db.Todos.Add(todo);
@@ -67,7 +68,7 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
 
 app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     {
-        if (!MiniValidation.TryValidate(inputTodo, out var errors))
+        if (!MiniValidator.TryValidate(inputTodo, out var errors))
             return Results.ValidationProblem(errors);
 
         var todo = await db.Todos.FindAsync(id);

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.EntityFrameworkCore;
+using MiniValidation;
 
 static class Program2
 {
@@ -31,7 +31,7 @@ static class Program2
 
         app.MapPost(routes.Todos, async (Todo todo, TodoDb db) =>
         {
-            if (!MiniValidation.TryValidate(todo, out var errors)) return Results.BadRequest(errors);
+            if (!MiniValidator.TryValidate(todo, out var errors)) return Results.BadRequest(errors);
 
             db.Todos.Add(todo);
             await db.SaveChangesAsync();
@@ -41,7 +41,7 @@ static class Program2
 
         app.MapPost("/todolist", (TodoList list) =>
         {
-            if (!MiniValidation.TryValidate(list, out var errors))
+            if (!MiniValidator.TryValidate(list, out var errors))
                 return Results.ValidationProblem(errors);
 
             return Results.Ok();
@@ -52,7 +52,7 @@ static class Program2
 
         app.MapPost("/todocycle", (TodoList list) =>
         {
-            if (!MiniValidation.TryValidate(list, out var errors))
+            if (!MiniValidator.TryValidate(list, out var errors))
                 return Results.ValidationProblem(errors);
 
             return Results.Ok();
