@@ -1,4 +1,4 @@
-﻿public class Point : IParseable<Point>
+﻿public struct Point : IParseable<Point>
 {
     public double X { get; set; }
 
@@ -8,7 +8,7 @@
 
     public static Point Parse(string value, IFormatProvider? provider)
     {
-        if (!TryParse(value, provider, out var result) || result is null)
+        if (!TryParse(value, provider, out var result))
         {
             throw new ArgumentException("Could not parse supplied value.", nameof(value));
         }
@@ -29,7 +29,7 @@
             return true;
         }
 
-        point = new Point();
+        point = default;
         return false;
     }
 }

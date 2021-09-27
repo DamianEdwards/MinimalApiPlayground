@@ -8,8 +8,13 @@ using Microsoft.Extensions.Options;
 namespace Microsoft.AspNetCore.Http;
 
 /// <summary>
-/// A brige to support MVC's model binders in minimal APIs. Specify ModelBinder&lt;<typeparamref name="T"/>&gt; in the paramter
-/// of your method trigger the model binding system. This requires registering the model binding services by calling AddControllers/AddMvc.
+/// <para>A bridge to support MVC's model binders in minimal APIs. Specify <see cref="ModelBinder{T}"/> as a paramter type
+/// of your method to trigger the model binding system.
+/// </para>
+/// <para>
+/// This requires registering the model binding services by calling
+/// <see cref="MvcCoreServiceCollectionExtensions.AddMvcCore"/> or <see cref="MvcServiceCollectionExtensions.AddControllers"/>.
+/// </para>
 /// </summary>
 /// <typeparam name="T">The type to model bind</typeparam>
 public class ModelBinder<T>

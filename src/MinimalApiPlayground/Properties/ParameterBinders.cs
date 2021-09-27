@@ -7,7 +7,7 @@
     /// parameter of type <typeparamref name="TModel"/> to a route handler delegate.
     /// </summary>
     /// <typeparam name="TModel">The parameter type.</typeparam>
-    public class Model<TModel> : IExtensionBinder<Model<TModel>>
+    public struct Model<TModel> : IExtensionBinder<Model<TModel?>>
     {
         private readonly TModel? _value;
 
@@ -18,27 +18,39 @@
 
         public TModel? Value => _value;
 
-        private static Model<TModel> Create(TModel? value) => new(value);
+        private static Model<TModel?> Create(TModel? value) => new(value);
 
         public static implicit operator TModel?(Model<TModel> model) => model.Value;
 
         // RequestDelegateFactory discovers this method via reflection and code-gens calls to it to populate
         // parameter values for declared route handler delegates.
-        public static async ValueTask<Model<TModel>?> BindAsync(HttpContext context, ParameterInfo parameter)
+        public static async ValueTask<Model<TModel?>> BindAsync(HttpContext context, ParameterInfo parameter)
         {
             var logger = context.RequestServices.GetRequiredService<ILogger<Model<TModel>>>();
 
             var binder = LookupBinder(context.RequestServices, logger);
 
-            var value = await binder.BindAsync(context, parameter);
+            if (binder != null)
+            {
+                var value = await binder.BindAsync(context, parameter);
+                return Create(value);
+            }
 
-            return Create(value);
+            var (defaultBinderResult, statusCode) = await DefaultBinder<TModel>.GetValueAsync(context);
+
+            if (statusCode != StatusCodes.Status200OK)
+            {
+                // Binding issue
+                throw new BadHttpRequestException("Bad request", statusCode);
+            }
+
+            return Create(defaultBinderResult);
         }
 
         private const string Template_ResolvedFromDI = nameof(IParameterBinder<object>) + "<{ParameterBinderTargetTypeName}> resolved from DI container.";
-        private const string Template_NotResolvedFromDI = nameof(IParameterBinder<object>) + "<{ParameterBinderTargetTypeName}> could not be resovled from DI container, using default JSON binder.";
+        private const string Template_NotResolvedFromDI = nameof(IParameterBinder<object>) + "<{ParameterBinderTargetTypeName}> could not be resovled from DI container, using default binder.";
 
-        private static IParameterBinder<TModel> LookupBinder(IServiceProvider services, ILogger logger)
+        private static IParameterBinder<TModel>? LookupBinder(IServiceProvider services, ILogger logger)
         {
             var binder = services.GetService<IParameterBinder<TModel>>();
 
@@ -51,26 +63,7 @@
 
             logger.LogDebug(Template_NotResolvedFromDI, typeof(TModel).Name);
 
-            return DefaultJsonParameterBinder.Instance;
-        }
-
-        class DefaultJsonParameterBinder : IParameterBinder<TModel>
-        {
-            private DefaultJsonParameterBinder() { }
-
-            public static IParameterBinder<TModel> Instance = new DefaultJsonParameterBinder();
-
-            public async ValueTask<TModel?> BindAsync(HttpContext context, ParameterInfo parameter)
-            {
-                if (!context.Request.HasJsonContentType())
-                {
-                    throw new BadHttpRequestException(
-                        "Request content type was not a recognized JSON content type.",
-                        StatusCodes.Status415UnsupportedMediaType);
-                }
-
-                return await context.Request.ReadFromJsonAsync<TModel>(context.RequestAborted);
-            }
+            return null;
         }
     }
 

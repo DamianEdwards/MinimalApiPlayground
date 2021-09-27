@@ -1,18 +1,13 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-class Parseable<T> : IParseable<Parseable<T>> where T : IParseable<T>
+struct Parseable<T> : IParseable<Parseable<T>> where T : IParseable<T>
 {
-    public Parseable()
-    {
-
-    }
-
-    public Parseable(T? value)
+    public Parseable(T value)
     {
         Value = value;
     }
 
-    public T? Value { get; set; }
+    public T Value { get; set; }
 
     public static Parseable<T> Parse(string value, IFormatProvider? provider)
     {
@@ -33,7 +28,7 @@ class Parseable<T> : IParseable<Parseable<T>> where T : IParseable<T>
         }
         else
         {
-            result = new Parseable<T>();
+            result = default;
         }
         return parsed;
     }

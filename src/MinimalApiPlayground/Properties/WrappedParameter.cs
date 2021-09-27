@@ -6,7 +6,7 @@ interface IWrapped<out T> where T : new()
     T Value { get; }
 }
 
-class Wrapped<T> : IWrapped<T>, IParseable<Wrapped<T>> where T : new()
+struct Wrapped<T> : IWrapped<T>, IParseable<Wrapped<T>> where T : new()
 {
     private static readonly Wrapped<T> EmptyWrapped = new(new());
 
@@ -105,10 +105,6 @@ class Wrapped<T> : IWrapped<T>, IParseable<Wrapped<T>> where T : new()
             value = new Wrapped<T>((T)(object)parsedValue);
             return parsed;
         }
-        else if (typeof(T).IsAssignableTo(typeof(IParseable<>)))
-        {
-
-        }
         else if (typeof(T) == typeof(Enum))
         {
             var parsed = Enum.TryParse(typeof(T), input, out var parsedValue);
@@ -125,14 +121,22 @@ class Wrapped<T> : IWrapped<T>, IParseable<Wrapped<T>> where T : new()
         else if (input != null)
         {
             var converter = System.ComponentModel.TypeDescriptor.GetConverter(typeof(T));
-            var T = converter.ConvertFromString(input);
+            if (converter != null && converter.CanConvertFrom(typeof(string)))
+            {
+                var result = converter.ConvertFromInvariantString(input);
+                if (result != null)
+                {
+                    value = new Wrapped<T>((T)result);
+                    return true;
+                }
+            }
         }
 
         // Fallback to reflection
         var valueType = typeof(T);
 
         // Needs a method like: bool TryParse(string input, out T value)
-        var tryParseMethod = valueType.GetMethod(nameof(TryParse), BindingFlags.Public | BindingFlags.Static, TryParseParamTypes);
+        var tryParseMethod = valueType.GetMethod(nameof(TryParse), BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy, TryParseParamTypes);
         if (tryParseMethod is not null && tryParseMethod.ReturnType == typeof(bool))
         {
             var parseMethodParams = tryParseMethod.GetParameters();
