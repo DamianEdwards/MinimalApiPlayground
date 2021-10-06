@@ -19,6 +19,7 @@ public class ErrorHandling
     }
 
     [Theory]
+    // BUG: Skipping theory cases doesn't work in VS due to https://github.com/xunit/visualstudio.xunit/issues/266#issuecomment-530557920
     [InlineData(400, "Development", Skip = "Fixed in rc.2: https://github.com/dotnet/aspnetcore/issues/35857")]
     [InlineData(404, "Development", Skip = "Fixed in rc.2: https://github.com/dotnet/aspnetcore/issues/35857")]
     [InlineData(405, "Development", Skip = "Fixed in rc.2: https://github.com/dotnet/aspnetcore/issues/35857")]
