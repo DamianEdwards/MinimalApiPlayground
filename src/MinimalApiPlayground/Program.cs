@@ -441,10 +441,13 @@ public class TodoBinder : IParameterBinder<Todo>
     }
 }
 
-class TodoDb : DbContext
+public class TodoDb : DbContext
 {
     public TodoDb(DbContextOptions<TodoDb> options)
         : base(options) { }
 
     public DbSet<Todo> Todos => Set<Todo>();
 }
+
+// Make the implicit Program class public so test projects can access it
+public partial class Program { }
