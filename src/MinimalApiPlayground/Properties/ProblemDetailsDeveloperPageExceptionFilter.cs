@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Mvc = Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
-using System.Diagnostics;
+using MiniEssentials;
 
 namespace Microsoft.AspNetCore.Diagnostics;
 
@@ -20,7 +20,7 @@ public class ProblemDetailsDeveloperPageExceptionFilter : IDeveloperPageExceptio
 
         if (acceptHeader?.Any(h => _problemJsonMediaType.IsSubsetOf(h)) == true)
         {
-            var problemDetails = new ProblemDetails
+            var problemDetails = new Mvc.ProblemDetails
             {
                 Title = $"An unhandled exception occurred while processing the request",
                 Detail = $"{ex.GetType().Name}: {ex.Message}",

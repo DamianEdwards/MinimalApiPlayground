@@ -5,13 +5,15 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using Mvc = Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
 using MinimalApiPlayground.ModelBinding;
 using MiniValidation;
 using MiniValidation.AspNetCore;
+using MiniEssentials;
+using MiniEssentials.Results;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,7 +44,7 @@ app.UseAntiforgery();
 
 // Error handling
 var problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
-app.MapGet("/error", (HttpContext context) =>
+app.MapGet("/error", Results<ProblemDetails, StatusCode> (HttpContext context) =>
     {
         var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
         var badRequestEx = error as BadHttpRequestException;
@@ -61,8 +63,7 @@ app.MapGet("/error", (HttpContext context) =>
         }
 
         // Plain text
-        context.Response.StatusCode = statusCode;
-        return Results.Text(badRequestEx?.Message ?? "An unhandled exception occurred while processing the request.");
+        return Results.Extensions.StatusCode(statusCode, badRequestEx?.Message ?? "An unhandled exception occurred while processing the request.");
     })
    .ExcludeFromDescription();
 
@@ -332,8 +333,8 @@ app.MapPost("/todos/validated-wrapper", async (Validated<Todo> inputTodo, TodoDb
 app.MapPost("/todos-local-func", AddTodoFunc);
 
 // EndpointName set automatically to name of method
-[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
+[Mvc.ProducesResponseType(typeof(Mvc.ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[Mvc.ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
 [EndpointName(nameof(AddTodoFunc))]
 [Tags("TodoApi")]
 async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
