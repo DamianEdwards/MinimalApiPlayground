@@ -1,12 +1,10 @@
 ﻿namespace MiniEssentials.Results;
 
-public sealed class Results<TResult1, TResult2> : IResult
-    where TResult1 : IResult
-    where TResult2 : IResult
+public abstract class ResultsBase : IResult
 {
     private readonly IResult _result;
 
-    private Results(IResult activeResult)
+    protected ResultsBase(IResult activeResult)
     {
         _result = activeResult;
     }
@@ -14,6 +12,17 @@ public sealed class Results<TResult1, TResult2> : IResult
     public async Task ExecuteAsync(HttpContext httpContext)
     {
         await _result.ExecuteAsync(httpContext);
+    }
+}
+
+public sealed class Results<TResult1, TResult2> : ResultsBase
+    where TResult1 : IResult
+    where TResult2 : IResult
+{
+
+    private Results(IResult activeResult) : base(activeResult)
+    {
+
     }
 
     public static implicit operator Results<TResult1, TResult2>(TResult1 result) => new(result);
@@ -21,21 +30,14 @@ public sealed class Results<TResult1, TResult2> : IResult
     public static implicit operator Results<TResult1, TResult2>(TResult2 result) => new(result);
 }
 
-public sealed class Results<TResult1, TResult2, TResult3> : IResult
+public sealed class Results<TResult1, TResult2, TResult3> : ResultsBase
     where TResult1 : IResult
     where TResult2 : IResult
     where TResult3 : IResult
 {
-    private readonly IResult _result;
-
-    private Results(IResult activeResult)
+    private Results(IResult activeResult) : base(activeResult)
     {
-        _result = activeResult;
-    }
 
-    public async Task ExecuteAsync(HttpContext httpContext)
-    {
-        await _result.ExecuteAsync(httpContext);
     }
 
     public static implicit operator Results<TResult1, TResult2, TResult3>(TResult1 result) => new(result);
@@ -45,22 +47,15 @@ public sealed class Results<TResult1, TResult2, TResult3> : IResult
     public static implicit operator Results<TResult1, TResult2, TResult3>(TResult3 result) => new(result);
 }
 
-public sealed class Results<TResult1, TResult2, TResult3, TResult4> : IResult
+public sealed class Results<TResult1, TResult2, TResult3, TResult4> : ResultsBase
     where TResult1 : IResult
     where TResult2 : IResult
     where TResult3 : IResult
     where TResult4 : IResult
 {
-    private readonly IResult _result;
-
-    private Results(IResult activeResult)
+    private Results(IResult activeResult) : base(activeResult)
     {
-        _result = activeResult;
-    }
 
-    public async Task ExecuteAsync(HttpContext httpContext)
-    {
-        await _result.ExecuteAsync(httpContext);
     }
 
     public static implicit operator Results<TResult1, TResult2, TResult3, TResult4>(TResult1 result) => new(result);
