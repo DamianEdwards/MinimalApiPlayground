@@ -2,16 +2,16 @@
 
 public abstract class ResultsBase : IResult
 {
-    private readonly IResult _result;
-
     protected ResultsBase(IResult activeResult)
     {
-        _result = activeResult;
+        Result = activeResult;
     }
+
+    public IResult Result { get; }
 
     public async Task ExecuteAsync(HttpContext httpContext)
     {
-        await _result.ExecuteAsync(httpContext);
+        await Result.ExecuteAsync(httpContext);
     }
 }
 
