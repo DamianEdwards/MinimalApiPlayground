@@ -168,7 +168,7 @@ app.MapPost("/bind-via-interface", (ExampleInput input) =>
 app.MapPost("/model", (Model<Todo> model) =>
     {
         Todo? todo = model;
-        return Results.Ok(todo);
+        return Results.Extensions.Ok(todo);
     })
     .WithTags("Examples")
     .Accepts<Todo>("application/json");
@@ -176,7 +176,7 @@ app.MapPost("/model", (Model<Todo> model) =>
 app.MapPost("/model-nobinder", (Model<NoBinder> model) =>
     {
         NoBinder? value = model;
-        return Results.Ok(value);
+        return Results.Extensions.Ok(value);
     })
     .WithTags("Examples")
     .Accepts<NoBinder>("application/json");
@@ -195,12 +195,12 @@ app.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpCont
             throw new BadHttpRequestException("Your request was bad and you should feel bad", todo.StatusCode);
         }
 
-        return Results.Ok(todo.Value);
+        return Results.Extensions.Ok(todo.Value);
     })
     .WithTags("Examples")
     .Accepts<Todo>("application/json");
 
-app.MapPost("/suppress-binding", async (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
+app.MapPost("/suppress-binding", async Task<Results<BadRequest, Ok<Todo>, Text, UnprocessableEntity>> (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
     {
         try
         {
@@ -211,19 +211,19 @@ app.MapPost("/suppress-binding", async (SuppressBinding<Todo?> todo, HttpContext
             {
                 // The default binding resulted in a default response, e.g. 400
                 // We can respond how we like instead
-                return Results.BadRequest($"Issue with default binding, status code returned was {statusCode}");
+                return Results.Extensions.BadRequest($"Issue with default binding, status code returned was {statusCode}");
             }
 
             return boundValue switch
             {
-                object => Results.Ok(boundValue),
-                _ => Results.Text("Bound value was null")
+                object => Results.Extensions.Ok(boundValue),
+                _ => Results.Extensions.Text("Bound value was null")
             };
         }
         catch (Exception ex)
         {
             // Exception occurred during default binding!
-            return Results.UnprocessableEntity(ex.ToString());
+            return Results.Extensions.UnprocessableEntity(ex.ToString());
         }
     })
     .WithTags("Examples")
@@ -254,40 +254,37 @@ app.MapGet("/todos/sample", () => new[] {
 
 app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync())
    .WithName("GetAllTodos")
-   .WithTags("TodoApi")
-   .Produces<List<Todo>>();
+   .WithTags("TodoApi");
 
 app.MapGet("/todos/incompleted", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync())
    .WithName("GetIncompletedTodos")
-   .WithTags("TodoApi")
-   .Produces<List<Todo>>();
+   .WithTags("TodoApi");
 
 app.MapGet("/todos/completed", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync())
    .WithName("GetCompletedTodos")
-   .WithTags("TodoApi")
-   .Produces<List<Todo>>();
+   .WithTags("TodoApi");
 
-app.MapGet("/todos/{id}", async (int id, TodoDb db) =>
+app.MapGet("/todos/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, TodoDb db) =>
     {
         return await db.Todos.FindAsync(id)
             is Todo todo
-                ? Results.Ok(todo)
-                : Results.NotFound();
+                ? Results.Extensions.Ok(todo)
+                : Results.Extensions.NotFound();
     })
     .WithName("GetTodoById")
     .WithTags("TodoApi")
     .Produces<Todo>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPost("/todos", async (Todo todo, TodoDb db) =>
+app.MapPost("/todos", async Task<Results<ValidationProblemDetails, Created>> (Todo todo, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(todo, out var errors))
-            return Results.ValidationProblem(errors);
+            return Results.Extensions.ValidationProblem(errors);
 
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.Created($"/todo/{todo.Id}", todo);
+        return Results.Extensions.Created($"/todo/{todo.Id}", todo);
     })
     .WithName("AddTodo")
     .WithTags("TodoApi")
@@ -295,15 +292,15 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     .Produces<Todo>(StatusCodes.Status201Created);
 
 // Example of a custom DTO base type that could use abstract 
-app.MapPost("/todos/dto", (CreateTodoInput input, TodoDb db) =>
+app.MapPost("/todos/dto", Results<ValidationProblemDetails, Created> (CreateTodoInput input, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(input, out var errors))
-            return Results.ValidationProblem(errors);
+            return Results.Extensions.ValidationProblem(errors);
 
         // Process the DTO here
         var newTodo = new Todo { Id = 1, Title = input.Title };
 
-        return Results.Created($"/todo/{newTodo.Id}", newTodo);
+        return Results.Extensions.Created($"/todo/{newTodo.Id}", newTodo);
     })
     .Accepts<CreateTodoInput>("application/json")
     .WithName("AddTodoViaDto")
@@ -312,16 +309,16 @@ app.MapPost("/todos/dto", (CreateTodoInput input, TodoDb db) =>
     .Produces<Todo>(StatusCodes.Status201Created);
 
 // Example of a custom wrapper type that performs validation
-app.MapPost("/todos/validated-wrapper", async (Validated<Todo> inputTodo, TodoDb db) =>
+app.MapPost("/todos/validated-wrapper", async Task<Results<ValidationProblemDetails, Created>> (Validated<Todo> inputTodo, TodoDb db) =>
     {
         var (todo, isValid) = inputTodo;
         if (!isValid || todo == null)
-            return Results.ValidationProblem(inputTodo.Errors);
+            return Results.Extensions.ValidationProblem(inputTodo.Errors);
 
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.Created($"/todo/{todo.Id}", todo);
+        return Results.Extensions.Created($"/todo/{todo.Id}", todo);
     })
     .WithName("AddTodo_ValidatedWrapper")
     .WithTags("TodoApi")
@@ -349,7 +346,7 @@ async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 }
 
 // Example of manually supporting more than JSON for input/output
-app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
+app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblemDetails, CreatedWithContentTypeResult<Todo>>> (HttpRequest request, TodoDb db) =>
     {
         string contentType = request.Headers.ContentType;
 
@@ -361,10 +358,10 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
         };
 
         if (todo is null)
-            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+            return Results.Extensions.UnsupportedMediaType();
 
         if (!MiniValidator.TryValidate(todo, out var errors))
-            return Results.ValidationProblem(errors);
+            return Results.Extensions.ValidationProblem(errors);
 
         db.Todos.Add(todo);
         await db.SaveChangesAsync();

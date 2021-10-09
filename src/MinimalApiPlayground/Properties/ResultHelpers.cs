@@ -17,14 +17,44 @@ namespace MiniEssentials
             return new Ok(message);
         }
 
+        public static Ok<TResult> Ok<TResult>(this IResultExtensions resultExtensions, TResult result)
+        {
+            return new Ok<TResult>(result);
+        }
+
+        public static Created Created(this IResultExtensions resultExtensions, string uri, object? value)
+        {
+            return new Created(uri, value);
+        }
+
+        public static Created<TResult> Created<TResult>(this IResultExtensions resultExtensions, string uri, TResult result)
+        {
+            return new Created<TResult>(uri, result);
+        }
+
         public static Text Text(this IResultExtensions resultExtensions, string text, string? contentType = null)
         {
             return new Text(text, contentType);
         }
 
-        public static BadRequest BadRequest(this IResultExtensions resultExtensions, int statusCode = StatusCodes.Status400BadRequest, string? message = null)
+        public static NotFound NotFound(this IResultExtensions resultExtensions, string? message = null)
         {
-            return new BadRequest(statusCode, message);
+            return new NotFound(message);
+        }
+
+        public static BadRequest BadRequest(this IResultExtensions resultExtensions, string? message = null, int statusCode = StatusCodes.Status400BadRequest)
+        {
+            return new BadRequest(message, statusCode);
+        }
+
+        public static UnprocessableEntity UnprocessableEntity(this IResultExtensions resultExtensions, string? message = null)
+        {
+            return new UnprocessableEntity(message);
+        }
+
+        public static UnsupportedMediaType UnsupportedMediaType(this IResultExtensions resultExtensions, string? message = null)
+        {
+            return new UnsupportedMediaType(message);
         }
 
         public static StatusCode StatusCode(this IResultExtensions resultExtensions, int statusCode, string? text, string? contentType = null)
@@ -32,7 +62,7 @@ namespace MiniEssentials
             return new StatusCode(statusCode, text, contentType);
         }
 
-        public static ProblemDetails Problem(this IResultExtensions resultExtensions, string? detail = null, string? instance = null, int? statusCode = null, string? title = null, string? type = null, Dictionary<string, string>? extensions = null)
+        public static ProblemDetails Problem(this IResultExtensions resultExtensions, string? detail = null, string? instance = null, int? statusCode = null, string? title = null, string? type = null, Dictionary<string, object>? extensions = null)
         {
             var problemDetails = new MvcProblemDetails
             {
@@ -53,16 +83,21 @@ namespace MiniEssentials
             return new ProblemDetails(problemDetails);
         }
 
+        public static ValidationProblemDetails ValidationProblem(this IResultExtensions resultExtensions, IDictionary<string, string[]> errors)
+        {
+            return new ValidationProblemDetails(errors);
+        }
+
         public static IResult Problem(this IResultExtensions resultExtensions, MvcProblemDetails problemDetails)
         {
             return new ProblemDetails(problemDetails);
         }
 
-        public static IResult CreatedWithContentType<T>(this IResultExtensions resultExtensions, T responseBody, string contentType)
+        public static CreatedWithContentTypeResult<TResult> CreatedWithContentType<TResult>(this IResultExtensions resultExtensions, TResult responseBody, string contentType)
         {
             ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
 
-            return new CreatedWithContentTypeResult<T>(responseBody, contentType);
+            return new CreatedWithContentTypeResult<TResult>(responseBody, contentType);
         }
 
         public static IResult Html(this IResultExtensions resultExtensions, string html)
@@ -70,44 +105,6 @@ namespace MiniEssentials
             ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
 
             return new Html(html);
-        }
-
-        class CreatedWithContentTypeResult<T> : IResult
-        {
-            private readonly T _responseBody;
-            private readonly string _contentType;
-
-            public CreatedWithContentTypeResult(T responseBody, string contentType)
-            {
-                _responseBody = responseBody;
-                _contentType = contentType;
-            }
-
-            public async Task ExecuteAsync(HttpContext httpContext)
-            {
-                // Likely should honor Accpets header, etc.
-                httpContext.Response.StatusCode = StatusCodes.Status201Created;
-                httpContext.Response.ContentType = _contentType;
-
-                switch (_contentType)
-                {
-                    case "application/xml":
-                        // This is terrible code, don't do this
-                        var xml = new XmlSerializer(typeof(T));
-                        using (var ms = new MemoryStream())
-                        {
-                            xml.Serialize(ms, _responseBody);
-                            ms.Seek(0, SeekOrigin.Begin);
-                            await ms.CopyToAsync(httpContext.Response.Body);
-                        }
-                        break;
-
-                    case "application/json":
-                    default:
-                        await httpContext.Response.WriteAsJsonAsync(_responseBody);
-                        break;
-                }
-            }
         }
     }
 }
@@ -157,12 +154,12 @@ namespace MiniEssentials.Results
         //protected const string DefaultContentType = "application/json; charset=utf-8";
         protected static readonly Encoding DefaultEncoding = Encoding.UTF8;
 
-        public ObjectResult(object value)
+        public ObjectResult(object? value)
         {
             Value = value;
         }
 
-        public object Value { get; }
+        public object? Value { get; }
 
         public abstract string DefaultContentType { get; }
 
@@ -197,7 +194,7 @@ namespace MiniEssentials.Results
 
     public class Json : ObjectResult
     {
-        public Json(object value)
+        public Json(object? value)
             : base(value)
         {
 
@@ -210,6 +207,106 @@ namespace MiniEssentials.Results
         protected override async Task WriteResult(HttpContext httpContext, Encoding contentTypeEncoding)
         {
             await httpContext.Response.WriteAsJsonAsync(Value, JsonSerializerOptions, ContentType);
+        }
+    }
+
+    public class StatusCode : ContentResult
+    {
+        public StatusCode(int statusCode, string? text, string? contentType = null)
+        {
+            StatusCode = statusCode;
+            ResponseContent = text;
+            ContentType = contentType;
+        }
+    }
+
+    public class Ok : StatusCode
+    {
+        public Ok(string? message = null)
+            : base(StatusCodes.Status200OK, message)
+        {
+
+        }
+    }
+
+    public class Ok<TResult> : Json
+    {
+        public Ok(TResult result)
+            : base(result)
+        {
+
+        }
+    }
+
+    public class Created : Json
+    {
+        public Created(string uri, object? value)
+            : base(value)
+        {
+            StatusCode = StatusCodes.Status201Created;
+        }
+    }
+
+    public class Created<TResult> : Created
+    {
+        public Created(string uri, TResult? value)
+            : base(uri, value)
+        {
+
+        }
+    }
+
+    public class NotFound : StatusCode
+    {
+        public NotFound(string? message = null)
+            : base(StatusCodes.Status404NotFound, message)
+        {
+
+        }
+    }
+
+    public class Text : StatusCode
+    {
+        public Text(string text, string? contentType = null)
+            : base(StatusCodes.Status200OK, text, contentType)
+        {
+
+        }
+    }
+
+    public class Html : Text
+    {
+        public Html(string html)
+            : base(html, "text/html")
+        {
+
+        }
+    }
+
+    public class BadRequest : StatusCode
+    {
+        public BadRequest(string? message = null, int statusCode = StatusCodes.Status400BadRequest)
+            : base(statusCode, message)
+        {
+
+        }
+    }
+
+    public class UnprocessableEntity : StatusCode
+    {
+        public UnprocessableEntity(string? message = null)
+            : base(StatusCodes.Status422UnprocessableEntity, message)
+        {
+
+        }
+    }
+
+    public class UnsupportedMediaType : StatusCode
+    {
+        public UnsupportedMediaType(string? message = null)
+            : base(StatusCodes.Status415UnsupportedMediaType, message)
+        {
+
         }
     }
 
@@ -253,58 +350,54 @@ namespace MiniEssentials.Results
         }
     }
 
-    public class StatusCode : ContentResult
+    public class ValidationProblemDetails : ProblemDetails
     {
-        public StatusCode(int statusCode, string? text, string? contentType = null)
-        {
-            StatusCode = statusCode;
-            ResponseContent = text;
-            ContentType = contentType;
-        }
-    }
-
-    public class Ok : StatusCode
-    {
-        public Ok(string? message = null)
-            : base(StatusCodes.Status200OK, message)
+        public ValidationProblemDetails(IDictionary<string, string[]> errors)
+            : base(new HttpValidationProblemDetails(errors)
+            {
+                Title = "One or more validation errors occurred.",
+                Status = StatusCodes.Status400BadRequest
+            })
         {
 
         }
     }
 
-    public class Ok<TResult> : Json where TResult : notnull
+    public class CreatedWithContentTypeResult<T> : IResult
     {
-        public Ok(TResult result)
-            : base(result)
-        {
+        private readonly T _responseBody;
+        private readonly string _contentType;
 
+        public CreatedWithContentTypeResult(T responseBody, string contentType)
+        {
+            _responseBody = responseBody;
+            _contentType = contentType;
         }
-    }
 
-    public class Text : StatusCode
-    {
-        public Text(string text, string? contentType = null)
-            : base(StatusCodes.Status200OK, text, contentType)
+        public async Task ExecuteAsync(HttpContext httpContext)
         {
+            // Likely should honor Accpets header, etc.
+            httpContext.Response.StatusCode = StatusCodes.Status201Created;
+            httpContext.Response.ContentType = _contentType;
 
-        }
-    }
+            switch (_contentType)
+            {
+                case "application/xml":
+                    // This is terrible code, don't do this
+                    var xml = new XmlSerializer(typeof(T));
+                    using (var ms = new MemoryStream())
+                    {
+                        xml.Serialize(ms, _responseBody);
+                        ms.Seek(0, SeekOrigin.Begin);
+                        await ms.CopyToAsync(httpContext.Response.Body);
+                    }
+                    break;
 
-    public class Html : Text
-    {
-        public Html(string html)
-            : base(html, "text/html")
-        {
-
-        }
-    }
-
-    public class BadRequest : StatusCode
-    {
-        public BadRequest(int statusCode = StatusCodes.Status400BadRequest, string? message = null)
-            : base(statusCode, message)
-        {
-
+                case "application/json":
+                default:
+                    await httpContext.Response.WriteAsJsonAsync(_responseBody);
+                    break;
+            }
         }
     }
 
