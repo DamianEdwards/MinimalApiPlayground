@@ -5,6 +5,7 @@ using System.Xml.Serialization;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Net.Http.Headers;
 using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
+using Mvc = Microsoft.AspNetCore.Mvc;
 
 namespace MiniEssentials
 {
@@ -22,6 +23,16 @@ namespace MiniEssentials
             return new Ok<TResult>(result);
         }
 
+        public static Accepted Accepted(this IResultExtensions resultExtensions)
+        {
+            return new Accepted();
+        }
+
+        public static NoContent NoContent(this IResultExtensions resultExtensions)
+        {
+            return new NoContent();
+        }
+
         public static Created Created(this IResultExtensions resultExtensions, string uri, object? value)
         {
             return new Created(uri, value);
@@ -35,6 +46,11 @@ namespace MiniEssentials
         public static Text Text(this IResultExtensions resultExtensions, string text, string? contentType = null)
         {
             return new Text(text, contentType);
+        }
+
+        public static PlainText PlainText(this IResultExtensions resultExtensions, string text)
+        {
+            return new PlainText(text);
         }
 
         public static NotFound NotFound(this IResultExtensions resultExtensions, string? message = null)
@@ -62,7 +78,7 @@ namespace MiniEssentials
             return new StatusCode(statusCode, text, contentType);
         }
 
-        public static ProblemDetails Problem(this IResultExtensions resultExtensions, string? detail = null, string? instance = null, int? statusCode = null, string? title = null, string? type = null, Dictionary<string, object>? extensions = null)
+        public static Problem Problem(this IResultExtensions resultExtensions, string? detail = null, string? instance = null, int? statusCode = null, string? title = null, string? type = null, Dictionary<string, object>? extensions = null)
         {
             var problemDetails = new MvcProblemDetails
             {
@@ -80,17 +96,17 @@ namespace MiniEssentials
                 }
             }
 
-            return new ProblemDetails(problemDetails);
+            return new Problem(problemDetails);
         }
 
-        public static ValidationProblemDetails ValidationProblem(this IResultExtensions resultExtensions, IDictionary<string, string[]> errors)
+        public static ValidationProblem ValidationProblem(this IResultExtensions resultExtensions, IDictionary<string, string[]> errors)
         {
-            return new ValidationProblemDetails(errors);
+            return new ValidationProblem(errors);
         }
 
         public static IResult Problem(this IResultExtensions resultExtensions, MvcProblemDetails problemDetails)
         {
-            return new ProblemDetails(problemDetails);
+            return new Problem(problemDetails);
         }
 
         public static CreatedWithContentTypeResult<TResult> CreatedWithContentType<TResult>(this IResultExtensions resultExtensions, TResult responseBody, string contentType)
@@ -167,7 +183,7 @@ namespace MiniEssentials.Results
 
         public int? StatusCode { get; init; }
 
-        public async Task ExecuteAsync(HttpContext httpContext)
+        public virtual async Task ExecuteAsync(HttpContext httpContext)
         {
             var response = httpContext.Response;
 
@@ -194,6 +210,8 @@ namespace MiniEssentials.Results
 
     public class Json : ObjectResult
     {
+        protected const string JsonContentType = "application/json";
+
         public Json(object? value)
             : base(value)
         {
@@ -202,7 +220,7 @@ namespace MiniEssentials.Results
 
         public JsonSerializerOptions? JsonSerializerOptions { get; init; }
 
-        public override string DefaultContentType => "application/json; charset=utf-8";
+        public override string DefaultContentType => $"{JsonContentType}; charset=utf-8";
 
         protected override async Task WriteResult(HttpContext httpContext, Encoding contentTypeEncoding)
         {
@@ -220,48 +238,120 @@ namespace MiniEssentials.Results
         }
     }
 
-    public class Ok : StatusCode
+    public class Ok : StatusCode, IProvideEndpointMetadata
     {
+        protected const int ResponseStatusCode = StatusCodes.Status200OK;
+
         public Ok(string? message = null)
-            : base(StatusCodes.Status200OK, message)
+            : base(ResponseStatusCode, message)
         {
 
         }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
+        }
     }
 
-    public class Ok<TResult> : Json
+    public class Ok<TResult> : Json, IProvideEndpointMetadata
     {
         public Ok(TResult result)
             : base(result)
         {
 
         }
-    }
 
-    public class Created : Json
-    {
-        public Created(string uri, object? value)
-            : base(value)
+        public static IEnumerable<object> GetMetadata()
         {
-            StatusCode = StatusCodes.Status201Created;
+            yield return new Mvc.ProducesResponseTypeAttribute(typeof(TResult), StatusCodes.Status200OK, Json.JsonContentType);
         }
     }
 
-    public class Created<TResult> : Created
+    public class Created : Json, IProvideEndpointMetadata
+    {
+        protected const int ResponseStatusCode = StatusCodes.Status201Created;
+
+        public Created(string uri, object? value)
+            : base(value)
+        {
+            Uri = uri;
+            StatusCode = ResponseStatusCode;
+        }
+
+        public string Uri { get; }
+
+        public override Task ExecuteAsync(HttpContext httpContext)
+        {
+            httpContext.Response.Headers.Location = Uri;
+            return base.ExecuteAsync(httpContext);
+        }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
+        }
+    }
+
+    public class Created<TResult> : Created, IProvideEndpointMetadata
     {
         public Created(string uri, TResult? value)
             : base(uri, value)
         {
 
         }
+
+        public new static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(typeof(TResult), ResponseStatusCode, Json.JsonContentType);
+        }
     }
 
-    public class NotFound : StatusCode
+    public class Accepted : StatusCode, IProvideEndpointMetadata
     {
-        public NotFound(string? message = null)
-            : base(StatusCodes.Status404NotFound, message)
+        private const int ResponseStatusCode = StatusCodes.Status202Accepted;
+
+        public Accepted(string? message = null)
+            : base(ResponseStatusCode, message)
         {
 
+        }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
+        }
+    }
+
+    public class NoContent : StatusCode, IProvideEndpointMetadata
+    {
+        private const int ResponseStatusCode = StatusCodes.Status204NoContent;
+
+        public NoContent(string? message = null)
+            : base(ResponseStatusCode, message)
+        {
+
+        }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
+        }
+    }
+
+    public class NotFound : StatusCode, IProvideEndpointMetadata
+    {
+        private const int ResponseStatusCode = StatusCodes.Status404NotFound;
+
+        public NotFound(string? message = null)
+            : base(ResponseStatusCode, message)
+        {
+
+        }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
     }
 
@@ -274,52 +364,94 @@ namespace MiniEssentials.Results
         }
     }
 
-    public class Html : Text
+    public class PlainText : StatusCode, IProvideEndpointMetadata
     {
-        public Html(string html)
-            : base(html, "text/html")
+        private const string PlainTextMediaType = "text/plain";
+
+        public PlainText(string text)
+            : base(StatusCodes.Status200OK, text, PlainTextMediaType)
         {
 
         }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesAttribute(PlainTextMediaType);
+        }
     }
 
-    public class BadRequest : StatusCode
+    public class Html : Text, IProvideEndpointMetadata
     {
-        public BadRequest(string? message = null, int statusCode = StatusCodes.Status400BadRequest)
+        private const string HtmlMediaType = "text/html";
+
+        public Html(string html)
+            : base(html, HtmlMediaType)
+        {
+
+        }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesAttribute(HtmlMediaType);
+        }
+    }
+
+    public class BadRequest : StatusCode, IProvideEndpointMetadata
+    {
+        private const int ResponseStatusCode = StatusCodes.Status400BadRequest;
+
+        public BadRequest(string? message = null, int statusCode = ResponseStatusCode)
             : base(statusCode, message)
         {
 
         }
-    }
 
-    public class UnprocessableEntity : StatusCode
-    {
-        public UnprocessableEntity(string? message = null)
-            : base(StatusCodes.Status422UnprocessableEntity, message)
+        public static IEnumerable<object> GetMetadata()
         {
-
+            yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
     }
 
-    public class UnsupportedMediaType : StatusCode
+    public class UnprocessableEntity : StatusCode, IProvideEndpointMetadata
+    {
+        private const int ResponseStatusCode = StatusCodes.Status422UnprocessableEntity;
+
+        public UnprocessableEntity(string? message = null)
+            : base(ResponseStatusCode, message)
+        {
+
+        }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
+        }
+    }
+
+    public class UnsupportedMediaType : StatusCode, IProvideEndpointMetadata
     {
         public UnsupportedMediaType(string? message = null)
             : base(StatusCodes.Status415UnsupportedMediaType, message)
         {
 
         }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(StatusCodes.Status415UnsupportedMediaType);
+        }
     }
 
-    public class ProblemDetails : Json
+    public class Problem : Json
     {
-        public ProblemDetails(MvcProblemDetails problemDetails)
+        protected const string ResponseContentType = "application/problem+json";
+
+        public Problem(MvcProblemDetails problemDetails)
             : base(problemDetails)
         {
-            ContentType = "application/problem+json";
+            ContentType = ResponseContentType;
             ProblemDetailsValue = problemDetails;
-            StatusCode = problemDetails.Status ??= ProblemDetailsValue is HttpValidationProblemDetails ?
-                    StatusCodes.Status400BadRequest :
-                    StatusCodes.Status500InternalServerError;
+            StatusCode = problemDetails.Status ??= StatusCodes.Status500InternalServerError;
         }
 
         public MvcProblemDetails ProblemDetailsValue { get; }
@@ -350,16 +482,23 @@ namespace MiniEssentials.Results
         }
     }
 
-    public class ValidationProblemDetails : ProblemDetails
+    public class ValidationProblem : Problem, IProvideEndpointMetadata
     {
-        public ValidationProblemDetails(IDictionary<string, string[]> errors)
+        private const int ResponseStatusCode = StatusCodes.Status400BadRequest;
+
+        public ValidationProblem(IDictionary<string, string[]> errors)
             : base(new HttpValidationProblemDetails(errors)
             {
                 Title = "One or more validation errors occurred.",
-                Status = StatusCodes.Status400BadRequest
+                Status = ResponseStatusCode
             })
         {
 
+        }
+
+        public static IEnumerable<object> GetMetadata()
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(typeof(HttpValidationProblemDetails), ResponseStatusCode, ResponseContentType);
         }
     }
 

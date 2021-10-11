@@ -28,6 +28,8 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddProblemDetailsDeveloperPageExceptionFilter();
 builder.Services.AddParameterBinder<TodoBinder, Todo>();
 
+builder.Services.AddEndpointsProvidesMetadataApiExplorer();
+
 // This enables MVC's model binders
 builder.Services.AddMvcCore();
 
@@ -44,7 +46,7 @@ app.UseAntiforgery();
 
 // Error handling
 var problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
-app.MapGet("/error", Results<ProblemDetails, StatusCode> (HttpContext context) =>
+app.MapGet("/error", Results<Problem, StatusCode> (HttpContext context) =>
     {
         var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
         var badRequestEx = error as BadHttpRequestException;
@@ -200,7 +202,7 @@ app.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpCont
     .WithTags("Examples")
     .Accepts<Todo>("application/json");
 
-app.MapPost("/suppress-binding", async Task<Results<BadRequest, Ok<Todo>, Text, UnprocessableEntity>> (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
+app.MapPost("/suppress-binding", async Task<Results<BadRequest, Ok<Todo>, PlainText, UnprocessableEntity>> (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
     {
         try
         {
@@ -217,7 +219,7 @@ app.MapPost("/suppress-binding", async Task<Results<BadRequest, Ok<Todo>, Text, 
             return boundValue switch
             {
                 object => Results.Extensions.Ok(boundValue),
-                _ => Results.Extensions.Text("Bound value was null")
+                _ => Results.Extensions.PlainText("Bound value was null")
             };
         }
         catch (Exception ex)
@@ -272,11 +274,9 @@ app.MapGet("/todos/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, TodoD
                 : Results.Extensions.NotFound();
     })
     .WithName("GetTodoById")
-    .WithTags("TodoApi")
-    .Produces<Todo>()
-    .Produces(StatusCodes.Status404NotFound);
+    .WithTags("TodoApi");
 
-app.MapPost("/todos", async Task<Results<ValidationProblemDetails, Created>> (Todo todo, TodoDb db) =>
+app.MapPost("/todos", async Task<Results<ValidationProblem, Created>> (Todo todo, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(todo, out var errors))
             return Results.Extensions.ValidationProblem(errors);
@@ -287,12 +287,10 @@ app.MapPost("/todos", async Task<Results<ValidationProblemDetails, Created>> (To
         return Results.Extensions.Created($"/todo/{todo.Id}", todo);
     })
     .WithName("AddTodo")
-    .WithTags("TodoApi")
-    .ProducesValidationProblem()
-    .Produces<Todo>(StatusCodes.Status201Created);
+    .WithTags("TodoApi");
 
 // Example of a custom DTO base type that could use abstract 
-app.MapPost("/todos/dto", Results<ValidationProblemDetails, Created> (CreateTodoInput input, TodoDb db) =>
+app.MapPost("/todos/dto", Results<ValidationProblem, Created> (CreateTodoInput input, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(input, out var errors))
             return Results.Extensions.ValidationProblem(errors);
@@ -304,12 +302,10 @@ app.MapPost("/todos/dto", Results<ValidationProblemDetails, Created> (CreateTodo
     })
     .Accepts<CreateTodoInput>("application/json")
     .WithName("AddTodoViaDto")
-    .WithTags("TodoApi")
-    .ProducesValidationProblem()
-    .Produces<Todo>(StatusCodes.Status201Created);
+    .WithTags("TodoApi");
 
 // Example of a custom wrapper type that performs validation
-app.MapPost("/todos/validated-wrapper", async Task<Results<ValidationProblemDetails, Created>> (Validated<Todo> inputTodo, TodoDb db) =>
+app.MapPost("/todos/validated-wrapper", async Task<Results<ValidationProblem, Created>> (Validated<Todo> inputTodo, TodoDb db) =>
     {
         var (todo, isValid) = inputTodo;
         if (!isValid || todo == null)
@@ -322,9 +318,7 @@ app.MapPost("/todos/validated-wrapper", async Task<Results<ValidationProblemDeta
     })
     .WithName("AddTodo_ValidatedWrapper")
     .WithTags("TodoApi")
-    .Accepts<Todo>("application/json")
-    .ProducesValidationProblem()
-    .Produces<Todo>(StatusCodes.Status201Created);
+    .Accepts<Todo>("application/json");
 
 // Example of adding an endpoint via a local function MethodGroup with attributes to describe it
 app.MapPost("/todos-local-func", AddTodoFunc);
@@ -346,7 +340,7 @@ async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 }
 
 // Example of manually supporting more than JSON for input/output
-app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblemDetails, CreatedWithContentTypeResult<Todo>>> (HttpRequest request, TodoDb db) =>
+app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblem, CreatedWithContentTypeResult<Todo>>> (HttpRequest request, TodoDb db) =>
     {
         string contentType = request.Headers.ContentType;
 
@@ -371,8 +365,6 @@ app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, Validat
     .WithName("AddTodoXmlOrJson")
     .WithTags("TodoApi")
     .Accepts<Todo>("application/json", "application/xml")
-    .Produces(StatusCodes.Status415UnsupportedMediaType)
-    .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created, "application/json", "application/xml");
 
 // Example of manually supporting file upload (comment out RequiresAntiforgery() line to allow POST from browser)
@@ -386,18 +378,18 @@ app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery
     .WithTags("TodoApi")
     .Produces<AntiforgeryTokenSet>();
 
-app.MapPost("/todos/fromfile", async (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
+app.MapPost("/todos/fromfile", async Task<Results<BadRequest, ValidationProblem, Created<List<Todo>>>> (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
     {
         var todos = todosFile.Value;
 
         if (!(todos?.Count > 0))
-            return Results.BadRequest();
+            return Results.Extensions.BadRequest();
 
         var todoCount = 0;
         foreach (var todo in todos)
         {
             if (!MiniValidator.TryValidate(todo, out var errors))
-                return Results.ValidationProblem(errors.ToDictionary(entry => $"[{todoCount}].{entry.Key}", entry => entry.Value));
+                return Results.Extensions.ValidationProblem(errors.ToDictionary(entry => $"[{todoCount}].{entry.Key}", entry => entry.Value));
 
             db.Todos.Add(todo);
             todoCount++;
@@ -405,101 +397,86 @@ app.MapPost("/todos/fromfile", async (JsonFormFile<List<Todo>> todosFile, TodoDb
 
         await db.SaveChangesAsync();
 
-        return Results.Created(string.Join(';', todos.Select(t => $"/todo/{t.Id}")), todos);
+        return Results.Extensions.Created(string.Join(';', todos.Select(t => $"/todo/{t.Id}")), todos);
     })
     .WithName("AddTodosFromFile")
     .WithTags("TodoApi")
-    .AcceptsFormFile("todosFile")
-    //.RequiresAntiforgery()
-    .Produces(StatusCodes.Status400BadRequest)
-    .Produces(StatusCodes.Status415UnsupportedMediaType)
-    .ProducesValidationProblem()
-    .Produces<List<Todo>>(StatusCodes.Status201Created);
+    .AcceptsFormFile("todosFile");
 
-app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
+app.MapPut("/todos/{id}", async Task<Results<ValidationProblem, NoContent, NotFound>> (int id, Todo inputTodo, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(inputTodo, out var errors))
-            return Results.ValidationProblem(errors);
+            return Results.Extensions.ValidationProblem(errors);
 
         if (await db.Todos.FindAsync(id) is Todo todo)
         {
             todo.Title = inputTodo.Title;
             todo.IsComplete = inputTodo.IsComplete;
             await db.SaveChangesAsync();
-            return Results.NoContent();
+            return Results.Extensions.NoContent();
         }
         else
         {
-            return Results.NotFound();
+            return Results.Extensions.NotFound();
         }
     })
     .WithName("UpdateTodo")
-    .WithTags("TodoApi")
-    .ProducesValidationProblem()
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
+    .WithTags("TodoApi");
 
-app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
+app.MapPut("/todos/{id}/mark-complete", async Task<Results<NoContent, NotFound>> (int id, TodoDb db) =>
     {
         if (await db.Todos.FindAsync(id) is Todo todo)
         {
             todo.IsComplete = true;
             await db.SaveChangesAsync();
-            return Results.NoContent();
+            return Results.Extensions.NoContent();
         }
         else
         {
-            return Results.NotFound();
+            return Results.Extensions.NotFound();
         }
     })
     .WithName("CompleteTodo")
-    .WithTags("TodoApi")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
+    .WithTags("TodoApi");
 
-app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
+app.MapPut("/todos/{id}/mark-incomplete", async Task<Results<NoContent, NotFound>> (int id, TodoDb db) =>
     {
         if (await db.Todos.FindAsync(id) is Todo todo)
         {
             todo.IsComplete = false;
             await db.SaveChangesAsync();
-            return Results.NoContent();
+            return Results.Extensions.NoContent();
         }
         else
         {
-            return Results.NotFound();
+            return Results.Extensions.NotFound();
         }
     })
     .WithName("UncompleteTodo")
-    .WithTags("TodoApi")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
+    .WithTags("TodoApi");
 
-app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
+app.MapDelete("/todos/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, TodoDb db) =>
     {
         if (await db.Todos.FindAsync(id) is Todo todo)
         {
             db.Todos.Remove(todo);
             await db.SaveChangesAsync();
-            return Results.Ok(todo);
+            return Results.Extensions.Ok(todo);
         }
 
-        return Results.NotFound();
+        return Results.Extensions.NotFound();
     })
     .WithName("DeleteTodo")
-    .WithTags("TodoApi")
-    .Produces<Todo>()
-    .Produces(StatusCodes.Status404NotFound);
+    .WithTags("TodoApi");
 
-app.MapDelete("/todos/delete-all", async (TodoDb db) =>
+app.MapDelete("/todos/delete-all", async Task<Ok<int>> (TodoDb db) =>
     {
         var rowCount = await db.Database.ExecuteSqlRawAsync("DELETE FROM Todos");
 
-        return Results.Ok(rowCount);
+        return Results.Extensions.Ok(rowCount);
     })
     .WithName("DeleteAllTodos")
-    .WithTags("TodoApi")
-    .Produces<int>();
+    .WithTags("TodoApi");
 
 app.Run();
 

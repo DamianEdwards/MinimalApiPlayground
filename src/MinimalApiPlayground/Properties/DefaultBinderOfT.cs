@@ -25,17 +25,20 @@ internal static class DefaultBinder<TValue>
             return (default(TValue?), postBindingStatusCode);
         }
 
-        return ((TValue?)httpContext.Items[_itemsKeyS], StatusCodes.Status200OK);
+        var value = (TValue?)httpContext.Items[_itemsKeyS];
+        httpContext.Items.Remove(_itemsKeyS);
+
+        return (value, StatusCodes.Status200OK);
     }
 
-    private static MethodInfo CompletedTask = typeof(Task).GetMethod("get_CompletedTask")!;
-    private static MethodInfo HttpContext_getItems = typeof(HttpContext).GetMethod("get_Items")!;
-    private static MethodInfo Dictionary_setItem = typeof(IDictionary<object,object?>).GetMethod("set_Item")!;
-    private static Type[] IResult_types = new[] { typeof(IResult) };
-    private static Type[] ExecuteAsync_ParamTypes = new [] { typeof(HttpContext) };
-    private static MethodInfo IResult_ExecuteAsync = typeof(IResult).GetMethod("ExecuteAsync")!;
-    private static Type[] Execute_ParamTypes = new[] { typeof(TValue), typeof(HttpContext) };
-    private static Type RouteHandler_DelegateType = typeof(Func<,,>).MakeGenericType(typeof(TValue), typeof(HttpContext), typeof(IResult));
+    private static readonly MethodInfo CompletedTask = typeof(Task).GetMethod("get_CompletedTask")!;
+    private static readonly MethodInfo HttpContext_getItems = typeof(HttpContext).GetMethod("get_Items")!;
+    private static readonly MethodInfo Dictionary_setItem = typeof(IDictionary<object,object?>).GetMethod("set_Item")!;
+    private static readonly Type[] IResult_types = new[] { typeof(IResult) };
+    private static readonly Type[] ExecuteAsync_ParamTypes = new [] { typeof(HttpContext) };
+    private static readonly MethodInfo IResult_ExecuteAsync = typeof(IResult).GetMethod("ExecuteAsync")!;
+    private static readonly Type[] Execute_ParamTypes = new[] { typeof(TValue), typeof(HttpContext) };
+    private static readonly Type RouteHandler_DelegateType = typeof(Func<,,>).MakeGenericType(typeof(TValue), typeof(HttpContext), typeof(IResult));
 
     private static RequestDelegate CreateRequestDelegateUsingRefEmit((Type TargetType, ParameterInfo? Parameter) key)
     {
