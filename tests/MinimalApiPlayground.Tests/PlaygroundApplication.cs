@@ -2,10 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Xunit;
-
-// HACK: Workardound for https://github.com/dotnet/aspnetcore/issues/35990
-[assembly: CollectionBehavior(CollectionBehavior.CollectionPerAssembly)]
 
 namespace MinimalApiPlayground.Tests;
 
@@ -27,11 +23,11 @@ internal class PlaygroundApplication : WebApplicationFactory<Program>
         {
             services.AddScoped(sp =>
             {
-                    // Replace SQLite with in-memory database for tests
-                    return new DbContextOptionsBuilder<TodoDb>()
-                    .UseInMemoryDatabase("Tests")
-                    .UseApplicationServiceProvider(sp)
-                    .Options;
+                // Replace SQLite with in-memory database for tests
+                return new DbContextOptionsBuilder<TodoDb>()
+                .UseInMemoryDatabase("Tests")
+                .UseApplicationServiceProvider(sp)
+                .Options;
             });
         });
 

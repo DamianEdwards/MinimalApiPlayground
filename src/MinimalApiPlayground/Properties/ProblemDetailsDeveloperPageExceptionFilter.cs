@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
+using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Diagnostics;
 
@@ -8,78 +9,54 @@ namespace Microsoft.AspNetCore.Diagnostics;
 /// </summary>
 public class ProblemDetailsDeveloperPageExceptionFilter : IDeveloperPageExceptionFilter
 {
-    private static readonly object ErrorContextItemsKey = new object();
-    private static readonly MediaTypeHeaderValue _jsonMediaType = new MediaTypeHeaderValue("application/json");
-
-    private static readonly RequestDelegate _respondWithProblemDetails = RequestDelegateFactory.Create((HttpContext context) =>
-    {
-        if (context.Items.TryGetValue(ErrorContextItemsKey, out var errorContextItem) && errorContextItem is ErrorContext errorContext)
-        {
-            return new ErrorProblemDetailsResult(errorContext.Exception);
-        }
-
-        return null;
-    }).RequestDelegate;
+    private static readonly MediaTypeHeaderValue _problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
 
     public async Task HandleExceptionAsync(ErrorContext errorContext, Func<ErrorContext, Task> next)
     {
         var headers = errorContext.HttpContext.Request.GetTypedHeaders();
         var acceptHeader = headers.Accept;
+        var ex = errorContext.Exception;
+        var httpContext = errorContext.HttpContext;
 
-        if (acceptHeader?.Any(h => h.IsSubsetOf(_jsonMediaType)) == true)
+        if (acceptHeader?.Any(h => _problemJsonMediaType.IsSubsetOf(h)) == true)
         {
-            errorContext.HttpContext.Items.Add(ErrorContextItemsKey, errorContext);
-            await _respondWithProblemDetails(errorContext.HttpContext);
+            var problemDetails = new ProblemDetails
+            {
+                Title = $"An unhandled exception occurred while processing the request",
+                Detail = $"{ex.GetType().Name}: {ex.Message}",
+                Status = ex switch
+                {
+                    BadHttpRequestException bhre => bhre.StatusCode,
+                    _ => StatusCodes.Status500InternalServerError
+                }
+            };
+
+            problemDetails.Extensions.Add("requestId", Activity.Current?.Id ?? httpContext.TraceIdentifier);
+            problemDetails.Extensions.Add("exception", ex.GetType().FullName);
+            problemDetails.Extensions.Add("stack", ex.StackTrace);
+            problemDetails.Extensions.Add("headers", httpContext.Request.Headers.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value));
+            problemDetails.Extensions.Add("routeValues", httpContext.GetRouteData().Values);
+            problemDetails.Extensions.Add("query", httpContext.Request.Query);
+            var endpoint = httpContext.GetEndpoint();
+            if (endpoint != null)
+            {
+                var routeEndpoint = endpoint as RouteEndpoint;
+                var httpMethods = endpoint?.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods;
+                problemDetails.Extensions.Add("endpoint", new
+                {
+                    endpoint?.DisplayName,
+                    routePattern = routeEndpoint?.RoutePattern.RawText,
+                    routeOrder = routeEndpoint?.Order,
+                    httpMethods = httpMethods != null ? string.Join(", ", httpMethods) : ""
+                });
+            }
+
+            await Results.Problem(problemDetails).ExecuteAsync(httpContext);
         }
         else
         {
             await next(errorContext);
         }
-    }
-}
-
-internal class ErrorProblemDetailsResult : IResult
-{
-    private readonly Exception _ex;
-
-    public ErrorProblemDetailsResult(Exception ex)
-    {
-        _ex = ex;
-    }
-
-    public async Task ExecuteAsync(HttpContext httpContext)
-    {
-        var problemDetails = new ProblemDetails
-        {
-            Title = $"An unhandled exception occurred while processing the request",
-            Detail = $"{_ex.GetType().Name}: {_ex.Message}",
-            Status = _ex switch
-            {
-                BadHttpRequestException ex => ex.StatusCode,
-                _ => StatusCodes.Status500InternalServerError
-            }
-        };
-        problemDetails.Extensions.Add("exception", _ex.GetType().FullName);
-        problemDetails.Extensions.Add("stack", _ex.StackTrace);
-        problemDetails.Extensions.Add("headers", httpContext.Request.Headers.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value));
-        problemDetails.Extensions.Add("routeValues", httpContext.GetRouteData().Values);
-        problemDetails.Extensions.Add("query", httpContext.Request.Query);
-        var endpoint = httpContext.GetEndpoint();
-        if (endpoint != null)
-        {
-            var routeEndpoint = endpoint as RouteEndpoint;
-            var httpMethods = endpoint?.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods;
-            problemDetails.Extensions.Add("endpoint", new {
-                endpoint?.DisplayName,
-                routePattern = routeEndpoint?.RoutePattern.RawText,
-                routeOrder = routeEndpoint?.Order,
-                httpMethods = httpMethods != null ? string.Join(", ", httpMethods) : ""
-            });
-        }
-
-        var result = Results.Json(problemDetails, statusCode: problemDetails.Status, contentType: "application/problem+json");
-
-        await result.ExecuteAsync(httpContext);
     }
 }
 

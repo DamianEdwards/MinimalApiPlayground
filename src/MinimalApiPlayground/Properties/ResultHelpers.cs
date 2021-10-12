@@ -2,7 +2,8 @@
 using System.Net.Mime;
 using System.Text;
 using System.Xml.Serialization;
-using Microsoft.AspNetCore.Http.Result;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Microsoft.AspNetCore.Http;
 

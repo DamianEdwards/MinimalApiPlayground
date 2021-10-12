@@ -1,19 +1,13 @@
-﻿using System.Text.Json;
-using System.Xml.Serialization;
+﻿using System.Xml.Serialization;
 
 namespace System.IO;
 
 public static class StreamExtensions
 {
-    private static readonly JsonSerializerOptions _webDefaults = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    public static async ValueTask<T?> ReadFromXmlAsync<T>(this HttpRequest httpRequest, long? contentLength) where T : new() =>
+        await ReadFromXmlAsync<T>(httpRequest.Body, contentLength);
 
-    public static async ValueTask<T?> ReadAsJsonAsync<T>(this Stream stream) where T : new()
-    {
-        T? result = await JsonSerializer.DeserializeAsync<T>(stream, _webDefaults);
-        return result;
-    }
-
-    public static async ValueTask<T?> ReadAsXmlAsync<T>(this Stream stream, long? contentLength) where T : new()
+    public static async ValueTask<T?> ReadFromXmlAsync<T>(this Stream stream, long? contentLength) where T : new()
     {
         // This is terrible code, don't do this, seriously
         var buffer = new byte[contentLength ?? 1024];

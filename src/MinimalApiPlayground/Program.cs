@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Net.Http.Headers;
 using MinimalApiPlayground.ModelBinding;
 using MiniValidation;
 using MiniValidation.AspNetCore;
@@ -39,11 +41,28 @@ if (!app.Environment.IsDevelopment())
 app.UseAntiforgery();
 
 // Error handling
+var problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
 app.MapGet("/error", (HttpContext context) =>
-    context.Features.Get<IExceptionHandlerFeature>()?.Error switch
     {
-        BadHttpRequestException ex => Results.Problem(ex.Message, statusCode: ex.StatusCode),
-        _ => Results.Problem("Internal server error")
+        var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        var badRequestEx = error as BadHttpRequestException;
+        var statusCode = badRequestEx?.StatusCode ?? StatusCodes.Status500InternalServerError;
+
+        if (context.Request.GetTypedHeaders().Accept?.Any(h => problemJsonMediaType.IsSubsetOf(h)) == true)
+        {
+            var extensions = new Dictionary<string, object?> { { "requestId", Activity.Current?.Id ?? context.TraceIdentifier } };
+
+            // JSON Problem Details
+            return error switch
+            {
+                BadHttpRequestException ex => Results.Problem(detail: ex.Message, statusCode: ex.StatusCode, extensions: extensions),
+                _ => Results.Problem(extensions: extensions)
+            };
+        }
+
+        // Plain text
+        context.Response.StatusCode = statusCode;
+        return Results.Text(badRequestEx?.Message ?? "An unhandled exception occurred while processing the request.");
     })
    .ExcludeFromDescription();
 
@@ -61,7 +80,7 @@ app.MapGet("/throw/{statusCode?}", (int? statusCode) =>
 
 // Hello World
 app.MapGet("/", () => "Hello World!")
-   .WithName("HelloWorldApi")
+   .WithName("HelloWorld")
    .WithTags("Examples");
 
 app.MapGet("/hello", () => new { Hello = "World" })
@@ -133,14 +152,78 @@ app.MapGet("/paged", (PagingData paging) =>
     $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}")
     .WithTags("Examples");
 
+// Example of a wrapper generic type the can bind its generic argument
 app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
     $"Successfully parsed {id.Value} as Wrapped<int>!")
     .WithTags("Examples");
 
+// Example of bind logic coming from static methods defined on inherited/implemented interface
+// TODO: Depends on https://github.com/dotnet/aspnetcore/issues/36935
+app.MapPost("/bind-via-interface", (ExampleInput input) =>
+    $"Successfully bound {input.StringProperty} as ExampleInput!")
+    .WithTags("Examples");
+
+// An example extensible binder system that allows for parameter binders to be configured in DI
 app.MapPost("/model", (Model<Todo> model) =>
     {
         Todo? todo = model;
         return Results.Ok(todo);
+    })
+    .WithTags("Examples")
+    .Accepts<Todo>("application/json");
+
+app.MapPost("/model-nobinder", (Model<NoBinder> model) =>
+    {
+        NoBinder? value = model;
+        return Results.Ok(value);
+    })
+    .WithTags("Examples")
+    .Accepts<NoBinder>("application/json");
+
+app.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpContext httpContext) =>
+    {
+        if (todo.Exception != null)
+        {
+            // There was an exception during binding, handle it however you like
+            throw todo.Exception;
+        }
+
+        if (todo.StatusCode != 200)
+        {
+            // The default logic would have auto-responded, do what you like instead
+            throw new BadHttpRequestException("Your request was bad and you should feel bad", todo.StatusCode);
+        }
+
+        return Results.Ok(todo.Value);
+    })
+    .WithTags("Examples")
+    .Accepts<Todo>("application/json");
+
+app.MapPost("/suppress-binding", async (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
+    {
+        try
+        {
+            // Manually invoke the default binding logic
+            var (boundValue, statusCode) = await DefaultBinder<Todo>.GetValueAsync(httpContext);
+
+            if (statusCode != 200)
+            {
+                // The default binding resulted in a default response, e.g. 400
+                // We can respond how we like instead
+                return Results.BadRequest($"Issue with default binding, status code returned was {statusCode}");
+            }
+
+            return boundValue switch
+            {
+                object => Results.Ok(boundValue),
+                _ => Results.Text("Bound value was null")
+            };
+        }
+        catch (Exception ex)
+        {
+            // Exception occurred during default binding!
+            return Results.UnprocessableEntity(ex.ToString());
+        }
     })
     .WithTags("Examples")
     .Accepts<Todo>("application/json");
@@ -210,6 +293,23 @@ app.MapPost("/todos", async (Todo todo, TodoDb db) =>
     .ProducesValidationProblem()
     .Produces<Todo>(StatusCodes.Status201Created);
 
+// Example of a custom DTO base type that could use abstract 
+app.MapPost("/todos/dto", (CreateTodoInput input, TodoDb db) =>
+    {
+        if (!MiniValidator.TryValidate(input, out var errors))
+            return Results.ValidationProblem(errors);
+
+        // Process the DTO here
+        var newTodo = new Todo { Id = 1, Title = input.Title };
+
+        return Results.Created($"/todo/{newTodo.Id}", newTodo);
+    })
+    .Accepts<CreateTodoInput>("application/json")
+    .WithName("AddTodoViaDto")
+    .WithTags("TodoApi")
+    .ProducesValidationProblem()
+    .Produces<Todo>(StatusCodes.Status201Created);
+
 // Example of a custom wrapper type that performs validation
 app.MapPost("/todos/validated-wrapper", async (Validated<Todo> inputTodo, TodoDb db) =>
     {
@@ -254,8 +354,8 @@ app.MapPost("/todos/xmlorjson", async (HttpRequest request, TodoDb db) =>
 
         var todo = contentType switch
         {
-            "application/json" => await request.Body.ReadAsJsonAsync<Todo>(),
-            "application/xml" => await request.Body.ReadAsXmlAsync<Todo>(request.ContentLength),
+            "application/json" => await request.ReadFromJsonAsync<Todo>(),
+            "application/xml" => await request.ReadFromXmlAsync<Todo>(request.ContentLength),
             _ => null,
         };
 
@@ -439,6 +539,16 @@ public class TodoBinder : IParameterBinder<Todo>
 
         return todo;
     }
+}
+
+public class NoBinder
+{
+    public string? Name { get; set; } = $"Default value set by {nameof(NoBinder)}";
+}
+
+public class ExampleInput : IInterfaceBinder<ExampleInput>
+{
+    public string? StringProperty { get; set; }
 }
 
 public class TodoDb : DbContext

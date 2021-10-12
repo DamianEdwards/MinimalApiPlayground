@@ -18,7 +18,7 @@
 
         public TModel? Value => _value;
 
-        private static Model<TModel?> Create(TModel? value) => new(value);
+        private static Model<TModel?> WrapResult(TModel? value) => new(value);
 
         public static implicit operator TModel?(Model<TModel> model) => model.Value;
 
@@ -33,10 +33,10 @@
             if (binder != null)
             {
                 var value = await binder.BindAsync(context, parameter);
-                return Create(value);
+                return WrapResult(value);
             }
 
-            var (defaultBinderResult, statusCode) = await DefaultBinder<TModel>.GetValueAsync(context);
+            var (defaultBinderResult, statusCode) = await DefaultBinder<TModel>.GetValueAsync(context, parameter);
 
             if (statusCode != StatusCodes.Status200OK)
             {
@@ -44,7 +44,7 @@
                 throw new BadHttpRequestException("Bad request", statusCode);
             }
 
-            return Create(defaultBinderResult);
+            return WrapResult(defaultBinderResult);
         }
 
         private const string Template_ResolvedFromDI = nameof(IParameterBinder<object>) + "<{ParameterBinderTargetTypeName}> resolved from DI container.";

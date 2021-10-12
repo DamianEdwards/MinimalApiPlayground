@@ -3,7 +3,7 @@
 public class AntiforgeryMiddleware
 {
     internal const string AntiforgeryMiddlewareInvokedKey = "__AntiforgeryMiddlewareInvoked";
-    private static readonly object AntiforgeryMiddlewareInvokedValue = new object();
+    private static readonly object AntiforgeryMiddlewareInvokedValue = new ();
 
     private readonly RequestDelegate _next;
     private readonly IAntiforgery _antiforgery;
@@ -18,7 +18,7 @@ public class AntiforgeryMiddleware
     {
         var endpoint = httpContext.GetEndpoint();
 
-        if (endpoint is Endpoint && !httpContext.Items.ContainsKey(AntiforgeryMiddlewareInvokedKey))
+        if (endpoint is not null && !httpContext.Items.ContainsKey(AntiforgeryMiddlewareInvokedKey))
         {
             httpContext.Items.Add(AntiforgeryMiddlewareInvokedKey, AntiforgeryMiddlewareInvokedValue);
 
