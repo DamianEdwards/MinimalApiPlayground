@@ -54,13 +54,13 @@ app.MapGet("/error", Results<Problem, StatusCode> (HttpContext context) =>
 
         if (context.Request.GetTypedHeaders().Accept?.Any(h => problemJsonMediaType.IsSubsetOf(h)) == true)
         {
-            var extensions = new Dictionary<string, object?> { { "requestId", Activity.Current?.Id ?? context.TraceIdentifier } };
+            var extensions = new Dictionary<string, object> { { "requestId", Activity.Current?.Id ?? context.TraceIdentifier } };
 
             // JSON Problem Details
             return error switch
             {
-                BadHttpRequestException ex => Results.Problem(detail: ex.Message, statusCode: ex.StatusCode, extensions: extensions),
-                _ => Results.Problem(extensions: extensions)
+                BadHttpRequestException ex => Results.Extensions.Problem(detail: ex.Message, statusCode: ex.StatusCode, extensions: extensions),
+                _ => Results.Extensions.Problem(extensions: extensions)
             };
         }
 
