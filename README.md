@@ -40,3 +40,5 @@ The project includes examples of the following and more:
 - Mutating responses from APIs via custom middleware
 - Using endpoint metadata to customize OpenAPI (Swagger) API descriptions
 - An experimental middleware for handling cross-site request forgery concerns using the framework's included `IAntiforgery` functionality
+- Running the framework's default inferred parameter binding logic on-demand
+- A custom set of extensions to gather metadata from the return types and parameter types in endpoint route handlers and use it to auto-describe complex route handlers to `ApiExplorer` without the need to manually annotate the route handlers with attributes or chained metadata method calls
