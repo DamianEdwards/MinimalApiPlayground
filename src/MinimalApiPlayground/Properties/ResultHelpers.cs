@@ -127,11 +127,20 @@ namespace MiniEssentials
 
             return new Html(html);
         }
+
+        public static IResult FromFile(this IResultExtensions resultExtensions, string filePath, string? contentType = null, int? statusCode = null)
+        {
+            ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
+
+            return new FromFile(filePath, contentType, statusCode);
+        }
     }
 }
 
 namespace MiniEssentials.Results
 {
+    using Microsoft.AspNetCore.StaticFiles;
+    using Microsoft.Extensions.FileProviders;
     using MiniEssentials.Metadata;
 
     public abstract class ContentResult : IResult
@@ -400,6 +409,51 @@ namespace MiniEssentials.Results
         public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesAttribute(HtmlMediaType);
+        }
+    }
+
+    public class FromFile : IResult
+    {
+        private const string DefaultMediaType = "text/plain";
+        private static readonly IContentTypeProvider _defaultContentTypeProvider = new FileExtensionContentTypeProvider();
+        private readonly string _filePath;
+        private readonly string? _contentType;
+        private readonly int? _statusCode;
+        private IFileProvider? _fileProvider;
+        private readonly IContentTypeProvider? _contentTypeProvider;
+
+        public FromFile(string filePath, string? contentType, int? statusCode, IFileProvider? fileProvider = null, IContentTypeProvider? contentTypeProvider = null)
+        {
+            _filePath = filePath;
+            _contentType = contentType;
+            _statusCode = statusCode;
+            _fileProvider = fileProvider;
+            _contentTypeProvider = contentTypeProvider;
+        }
+
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            var fileProvider = _fileProvider ?? httpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().ContentRootFileProvider;
+            var file = fileProvider.GetFileInfo(_filePath);
+            
+            if (!file.Exists)
+            {
+                throw new InvalidOperationException($"Specified file path '{_filePath}' does not exist.");
+            }
+
+            var contentTypeProvider = _contentTypeProvider ?? _defaultContentTypeProvider;
+            var contentType = _contentType;
+            if (contentType is null && contentTypeProvider.TryGetContentType(_filePath, out var providerContentType))
+            {
+                contentType = providerContentType;
+            }
+
+            contentType ??= DefaultMediaType;
+
+            httpContext.Response.ContentType = contentType;
+            httpContext.Response.StatusCode = _statusCode ?? StatusCodes.Status200OK;
+
+            await httpContext.Response.SendFileAsync(file);
         }
     }
 

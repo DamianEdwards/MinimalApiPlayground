@@ -117,6 +117,10 @@ app.MapGet("/html", (HttpContext context) => Results.Extensions.Html(
 </html>"))
    .ExcludeFromDescription();
 
+// Example file output from custom IResult
+app.MapGet("/htmlfile", (HttpContext context) => Results.Extensions.FromFile("Files\\example.html"))
+   .ExcludeFromDescription();
+
 // Parameter optionality
 app.MapGet("/optionality/{value?}", (string? value, int? number) =>
     {
