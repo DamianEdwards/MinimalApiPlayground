@@ -1,13 +1,15 @@
 ﻿namespace MinimalApiPlayground.ModelBinding
 {
+    using System.Collections.Generic;
     using System.Reflection;
+    using MiniEssentials.Metadata;
 
     /// <summary>
     /// Represents a type that will use a registered <see cref="IParameterBinder<TModel>"/> to popuate a
     /// parameter of type <typeparamref name="TModel"/> to a route handler delegate.
     /// </summary>
     /// <typeparam name="TModel">The parameter type.</typeparam>
-    public struct Model<TModel> : IExtensionBinder<Model<TModel?>>
+    public struct Model<TModel> : IExtensionBinder<Model<TModel?>>, IProvideEndpointParameterMetadata
     {
         private readonly TModel? _value;
 
@@ -45,6 +47,18 @@
             }
 
             return WrapResult(defaultBinderResult);
+        }
+
+        public static IEnumerable<object> GetMetadata(ParameterInfo parameter, IServiceProvider services)
+        {
+            var logger = services.GetRequiredService<ILogger<Model<TModel>>>();
+            var binder = LookupBinder(services, logger);
+
+            return binder switch
+            {
+                IProvideEndpointResponseMetadata => IProvideEndpointParameterMetadata.GetMetadataLateBound(parameter, services),
+                _ => new[] { new Mvc.ConsumesAttribute(typeof(TModel), "application/json") }
+            };
         }
 
         private const string Template_ResolvedFromDI = nameof(IParameterBinder<object>) + "<{ParameterBinderTargetTypeName}> resolved from DI container.";

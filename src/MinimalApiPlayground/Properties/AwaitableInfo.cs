@@ -37,6 +37,26 @@ internal readonly struct AwaitableInfo
         GetAwaiterMethod = getAwaiterMethod;
     }
 
+    public static Type GetMethodReturnType(MethodInfo method)
+    {
+        if (AwaitableInfo.IsTypeAwaitable(method.ReturnType, out var awaitableInfo))
+        {
+            return awaitableInfo.ResultType;
+        }
+
+        return method.ReturnType;
+    }
+
+    public static Type GetParameterType(ParameterInfo parameter)
+    {
+        if (AwaitableInfo.IsTypeAwaitable(parameter.ParameterType, out var awaitableInfo))
+        {
+            return awaitableInfo.ResultType;
+        }
+
+        return parameter.ParameterType;
+    }
+
     public static bool IsTypeAwaitable(Type type, out AwaitableInfo awaitableInfo)
     {
         // Based on Roslyn code: http://source.roslyn.io/#Microsoft.CodeAnalysis.Workspaces/Shared/Extensions/ISymbolExtensions.cs,db4d48ba694b9347

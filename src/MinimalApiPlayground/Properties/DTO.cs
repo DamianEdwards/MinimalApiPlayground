@@ -1,7 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using MiniEssentials.Metadata;
 
-public abstract class ApiInput<TInput> where TInput : ApiInput<TInput>
+public abstract class ApiInput<TInput> : IProvideEndpointParameterMetadata where TInput : ApiInput<TInput>
 {
     public static async ValueTask<TInput?> BindAsync(HttpContext context, ParameterInfo parameter)
     {
@@ -11,6 +12,11 @@ public abstract class ApiInput<TInput> where TInput : ApiInput<TInput>
         var input = await context.Request.ReadFromJsonAsync<TInput>();
 
         return input;
+    }
+
+    public static IEnumerable<object> GetMetadata(ParameterInfo parameter, IServiceProvider services)
+    {
+        yield return new Mvc.ConsumesAttribute(typeof(TInput), "application/json");
     }
 }
 

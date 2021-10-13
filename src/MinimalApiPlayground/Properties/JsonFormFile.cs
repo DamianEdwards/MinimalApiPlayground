@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.Json;
+using MiniEssentials.Metadata;
 using MinimalApiPlayground.ModelBinding;
 
 namespace Microsoft.AspNetCore.Http;
@@ -8,7 +9,7 @@ namespace Microsoft.AspNetCore.Http;
 /// <summary>
 /// Represents a JSON file in a multipart/form-data request (i.e. a form upload).
 /// </summary>
-public class JsonFormFile<TValue> : JsonFormFile, IExtensionBinder<JsonFormFile<TValue>>
+public class JsonFormFile<TValue> : JsonFormFile, IExtensionBinder<JsonFormFile<TValue>>, IProvideEndpointParameterMetadata
 {
     public JsonFormFile(TValue value, JsonSerializerOptions jsonSerializerOptions)
         : base(jsonSerializerOptions)
@@ -32,6 +33,12 @@ public class JsonFormFile<TValue> : JsonFormFile, IExtensionBinder<JsonFormFile<
         }
 
         return null;
+    }
+
+    public static IEnumerable<object> GetMetadata(ParameterInfo parameter, IServiceProvider services)
+    {
+        yield return new Mvc.ConsumesAttribute("multipart/form-data");
+        yield return new Mvc.ApiExplorer.ApiParameterDescription { Name = parameter.Name ?? "file", Source = Mvc.ModelBinding.BindingSource.FormFile };
     }
 
     public override Stream OpenReadStream() =>

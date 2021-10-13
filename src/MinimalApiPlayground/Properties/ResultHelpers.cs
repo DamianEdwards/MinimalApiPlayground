@@ -4,8 +4,6 @@ using System.Text.Json;
 using System.Xml.Serialization;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Net.Http.Headers;
-using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
-using Mvc = Microsoft.AspNetCore.Mvc;
 
 namespace MiniEssentials
 {
@@ -80,7 +78,7 @@ namespace MiniEssentials
 
         public static Problem Problem(this IResultExtensions resultExtensions, string? detail = null, string? instance = null, int? statusCode = null, string? title = null, string? type = null, Dictionary<string, object>? extensions = null)
         {
-            var problemDetails = new MvcProblemDetails
+            var problemDetails = new Mvc.ProblemDetails
             {
                 Title = title,
                 Detail = detail,
@@ -99,21 +97,28 @@ namespace MiniEssentials
             return new Problem(problemDetails);
         }
 
+        public static ValidationProblem ValidationProblem(this IResultExtensions resultExtensions, Dictionary<string, string[]> errors)
+        {
+            return new ValidationProblem(errors);
+        }
+
         public static ValidationProblem ValidationProblem(this IResultExtensions resultExtensions, IDictionary<string, string[]> errors)
         {
             return new ValidationProblem(errors);
         }
 
-        public static IResult Problem(this IResultExtensions resultExtensions, MvcProblemDetails problemDetails)
+        public static IResult Problem(this IResultExtensions resultExtensions, Mvc.ProblemDetails problemDetails)
         {
             return new Problem(problemDetails);
         }
 
-        public static CreatedWithContentTypeResult<TResult> CreatedWithContentType<TResult>(this IResultExtensions resultExtensions, TResult responseBody, string contentType)
+        public static CreatedJsonOrXml<TResult> CreatedJsonOrXml<TResult>(this IResultExtensions resultExtensions, TResult responseBody, string contentType)
         {
             ArgumentNullException.ThrowIfNull(resultExtensions, nameof(resultExtensions));
 
-            return new CreatedWithContentTypeResult<TResult>(responseBody, contentType);
+            Results.CreatedJsonOrXml<TResult>.ThrowIfUnsupportedContentType(contentType);
+
+            return new CreatedJsonOrXml<TResult>(responseBody, contentType);
         }
 
         public static IResult Html(this IResultExtensions resultExtensions, string html)
@@ -127,6 +132,8 @@ namespace MiniEssentials
 
 namespace MiniEssentials.Results
 {
+    using MiniEssentials.Metadata;
+
     public abstract class ContentResult : IResult
     {
         private const string DefaultContentType = "text/plain; charset=utf-8";
@@ -238,7 +245,7 @@ namespace MiniEssentials.Results
         }
     }
 
-    public class Ok : StatusCode, IProvideEndpointMetadata
+    public class Ok : StatusCode, IProvideEndpointResponseMetadata
     {
         protected const int ResponseStatusCode = StatusCodes.Status200OK;
 
@@ -248,13 +255,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
     }
 
-    public class Ok<TResult> : Json, IProvideEndpointMetadata
+    public class Ok<TResult> : Json, IProvideEndpointResponseMetadata
     {
         public Ok(TResult result)
             : base(result)
@@ -262,13 +269,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(typeof(TResult), StatusCodes.Status200OK, Json.JsonContentType);
         }
     }
 
-    public class Created : Json, IProvideEndpointMetadata
+    public class Created : Json, IProvideEndpointResponseMetadata
     {
         protected const int ResponseStatusCode = StatusCodes.Status201Created;
 
@@ -287,13 +294,13 @@ namespace MiniEssentials.Results
             return base.ExecuteAsync(httpContext);
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
     }
 
-    public class Created<TResult> : Created, IProvideEndpointMetadata
+    public class Created<TResult> : Created, IProvideEndpointResponseMetadata
     {
         public Created(string uri, TResult? value)
             : base(uri, value)
@@ -301,13 +308,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public new static IEnumerable<object> GetMetadata()
+        public new static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(typeof(TResult), ResponseStatusCode, Json.JsonContentType);
         }
     }
 
-    public class Accepted : StatusCode, IProvideEndpointMetadata
+    public class Accepted : StatusCode, IProvideEndpointResponseMetadata
     {
         private const int ResponseStatusCode = StatusCodes.Status202Accepted;
 
@@ -317,13 +324,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
     }
 
-    public class NoContent : StatusCode, IProvideEndpointMetadata
+    public class NoContent : StatusCode, IProvideEndpointResponseMetadata
     {
         private const int ResponseStatusCode = StatusCodes.Status204NoContent;
 
@@ -333,13 +340,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
     }
 
-    public class NotFound : StatusCode, IProvideEndpointMetadata
+    public class NotFound : StatusCode, IProvideEndpointResponseMetadata
     {
         private const int ResponseStatusCode = StatusCodes.Status404NotFound;
 
@@ -349,7 +356,7 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
@@ -364,7 +371,7 @@ namespace MiniEssentials.Results
         }
     }
 
-    public class PlainText : StatusCode, IProvideEndpointMetadata
+    public class PlainText : StatusCode, IProvideEndpointResponseMetadata
     {
         private const string PlainTextMediaType = "text/plain";
 
@@ -374,13 +381,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesAttribute(PlainTextMediaType);
         }
     }
 
-    public class Html : Text, IProvideEndpointMetadata
+    public class Html : Text, IProvideEndpointResponseMetadata
     {
         private const string HtmlMediaType = "text/html";
 
@@ -390,13 +397,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesAttribute(HtmlMediaType);
         }
     }
 
-    public class BadRequest : StatusCode, IProvideEndpointMetadata
+    public class BadRequest : StatusCode, IProvideEndpointResponseMetadata
     {
         private const int ResponseStatusCode = StatusCodes.Status400BadRequest;
 
@@ -406,13 +413,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
     }
 
-    public class UnprocessableEntity : StatusCode, IProvideEndpointMetadata
+    public class UnprocessableEntity : StatusCode, IProvideEndpointResponseMetadata
     {
         private const int ResponseStatusCode = StatusCodes.Status422UnprocessableEntity;
 
@@ -422,13 +429,13 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(ResponseStatusCode);
         }
     }
 
-    public class UnsupportedMediaType : StatusCode, IProvideEndpointMetadata
+    public class UnsupportedMediaType : StatusCode, IProvideEndpointResponseMetadata
     {
         public UnsupportedMediaType(string? message = null)
             : base(StatusCodes.Status415UnsupportedMediaType, message)
@@ -436,7 +443,7 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(StatusCodes.Status415UnsupportedMediaType);
         }
@@ -446,7 +453,7 @@ namespace MiniEssentials.Results
     {
         protected const string ResponseContentType = "application/problem+json";
 
-        public Problem(MvcProblemDetails problemDetails)
+        public Problem(Mvc.ProblemDetails problemDetails)
             : base(problemDetails)
         {
             ContentType = ResponseContentType;
@@ -454,7 +461,7 @@ namespace MiniEssentials.Results
             StatusCode = problemDetails.Status ??= StatusCodes.Status500InternalServerError;
         }
 
-        public MvcProblemDetails ProblemDetailsValue { get; }
+        public Mvc.ProblemDetails ProblemDetailsValue { get; }
 
         protected override async Task WriteResult(HttpContext httpContext, Encoding contentTypeEncoding)
         {
@@ -482,7 +489,7 @@ namespace MiniEssentials.Results
         }
     }
 
-    public class ValidationProblem : Problem, IProvideEndpointMetadata
+    public class ValidationProblem : Problem, IProvideEndpointResponseMetadata
     {
         private const int ResponseStatusCode = StatusCodes.Status400BadRequest;
 
@@ -496,19 +503,21 @@ namespace MiniEssentials.Results
 
         }
 
-        public static IEnumerable<object> GetMetadata()
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
         {
             yield return new Mvc.ProducesResponseTypeAttribute(typeof(HttpValidationProblemDetails), ResponseStatusCode, ResponseContentType);
         }
     }
 
-    public class CreatedWithContentTypeResult<T> : IResult
+    public class CreatedJsonOrXml<T> : IResult, IProvideEndpointResponseMetadata
     {
         private readonly T _responseBody;
         private readonly string _contentType;
 
-        public CreatedWithContentTypeResult(T responseBody, string contentType)
+        public CreatedJsonOrXml(T responseBody, string contentType)
         {
+            ThrowIfUnsupportedContentType(contentType);
+
             _responseBody = responseBody;
             _contentType = contentType;
         }
@@ -536,6 +545,20 @@ namespace MiniEssentials.Results
                 default:
                     await httpContext.Response.WriteAsJsonAsync(_responseBody);
                     break;
+            }
+        }
+
+        public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
+        {
+            yield return new Mvc.ProducesResponseTypeAttribute(typeof(T), StatusCodes.Status201Created, "application/json", "application/xml");
+        }
+
+        internal static void ThrowIfUnsupportedContentType(string contentType)
+        {
+            if (!string.Equals(contentType, "application/json", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(contentType, "application/xml", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Value provided for {contentType} must be either 'application/json' or 'application/xml'.", nameof(contentType));
             }
         }
     }

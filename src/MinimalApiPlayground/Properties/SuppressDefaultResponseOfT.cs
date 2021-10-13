@@ -1,11 +1,12 @@
 ﻿using System.Reflection;
+using MiniEssentials.Metadata;
 
 /// <summary>
 /// Suprresses the default response logic of RequestDelegateFactory when accepted as a parameter to a route handler.
 /// Default binding of the <typeparamref name="TValue"/> will still occur.
 /// </summary>
 /// <typeparam name="TValue">The <see cref="Type"/> of the parameter.</typeparam>
-public class SuppressDefaultResponse<TValue>
+public class SuppressDefaultResponse<TValue> : IProvideEndpointParameterMetadata
 {
     public SuppressDefaultResponse(TValue? value, int statusCode)
     {
@@ -37,5 +38,10 @@ public class SuppressDefaultResponse<TValue>
             // Exception occurred during binding!
             return new SuppressDefaultResponse<TValue?>(ex);
         }
+    }
+
+    public static IEnumerable<object> GetMetadata(ParameterInfo parameter, IServiceProvider services)
+    {
+        yield return new Mvc.ConsumesAttribute(typeof(TValue), "application/json");
     }
 }

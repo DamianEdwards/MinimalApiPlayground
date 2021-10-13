@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
-using Mvc = Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
@@ -161,10 +160,10 @@ app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
     .WithTags("Examples");
 
 // Example of bind logic coming from static methods defined on inherited/implemented interface
-// TODO: Depends on https://github.com/dotnet/aspnetcore/issues/36935
 app.MapPost("/bind-via-interface", (ExampleInput input) =>
     $"Successfully bound {input.StringProperty} as ExampleInput!")
-    .WithTags("Examples");
+    .WithTags("Examples")
+    .Accepts<ExampleInput>("application/json");
 
 // An example extensible binder system that allows for parameter binders to be configured in DI
 app.MapPost("/model", (Model<Todo> model) =>
@@ -172,16 +171,14 @@ app.MapPost("/model", (Model<Todo> model) =>
         Todo? todo = model;
         return Results.Extensions.Ok(todo);
     })
-    .WithTags("Examples")
-    .Accepts<Todo>("application/json");
+    .WithTags("Examples");
 
 app.MapPost("/model-nobinder", (Model<NoBinder> model) =>
     {
         NoBinder? value = model;
         return Results.Extensions.Ok(value);
     })
-    .WithTags("Examples")
-    .Accepts<NoBinder>("application/json");
+    .WithTags("Examples");
 
 app.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpContext httpContext) =>
     {
@@ -199,8 +196,7 @@ app.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpCont
 
         return Results.Extensions.Ok(todo.Value);
     })
-    .WithTags("Examples")
-    .Accepts<Todo>("application/json");
+    .WithTags("Examples");
 
 app.MapPost("/suppress-binding", async Task<Results<BadRequest, Ok<Todo>, PlainText, UnprocessableEntity>> (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
     {
@@ -228,8 +224,7 @@ app.MapPost("/suppress-binding", async Task<Results<BadRequest, Ok<Todo>, PlainT
             return Results.Extensions.UnprocessableEntity(ex.ToString());
         }
     })
-    .WithTags("Examples")
-    .Accepts<Todo>("application/json");
+    .WithTags("Examples");
 
 // Using MVC's model binding logic via a generic wrapping shim
 app.MapGet("/paged2", (ModelBinder<PagedData> paging) =>
@@ -276,7 +271,7 @@ app.MapGet("/todos/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, TodoD
     .WithName("GetTodoById")
     .WithTags("TodoApi");
 
-app.MapPost("/todos", async Task<Results<ValidationProblem, Created>> (Todo todo, TodoDb db) =>
+app.MapPost("/todos", async Task<Results<ValidationProblem, Created<Todo>>> (Todo todo, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(todo, out var errors))
             return Results.Extensions.ValidationProblem(errors);
@@ -290,7 +285,7 @@ app.MapPost("/todos", async Task<Results<ValidationProblem, Created>> (Todo todo
     .WithTags("TodoApi");
 
 // Example of a custom DTO base type that could use abstract 
-app.MapPost("/todos/dto", Results<ValidationProblem, Created> (CreateTodoInput input, TodoDb db) =>
+app.MapPost("/todos/dto", Results<ValidationProblem, Created<Todo>> (CreateTodoInput input, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(input, out var errors))
             return Results.Extensions.ValidationProblem(errors);
@@ -300,12 +295,11 @@ app.MapPost("/todos/dto", Results<ValidationProblem, Created> (CreateTodoInput i
 
         return Results.Extensions.Created($"/todo/{newTodo.Id}", newTodo);
     })
-    .Accepts<CreateTodoInput>("application/json")
     .WithName("AddTodoViaDto")
     .WithTags("TodoApi");
 
 // Example of a custom wrapper type that performs validation
-app.MapPost("/todos/validated-wrapper", async Task<Results<ValidationProblem, Created>> (Validated<Todo> inputTodo, TodoDb db) =>
+app.MapPost("/todos/validated-wrapper", async Task<Results<ValidationProblem, Created<Todo>>> (Validated<Todo> inputTodo, TodoDb db) =>
     {
         var (todo, isValid) = inputTodo;
         if (!isValid || todo == null)
@@ -340,7 +334,7 @@ async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 }
 
 // Example of manually supporting more than JSON for input/output
-app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblem, CreatedWithContentTypeResult<Todo>>> (HttpRequest request, TodoDb db) =>
+app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblem, CreatedJsonOrXml<Todo>>> (HttpRequest request, TodoDb db) =>
     {
         string contentType = request.Headers.ContentType;
 
@@ -360,12 +354,11 @@ app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, Validat
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.Extensions.CreatedWithContentType(todo, contentType);
+        return Results.Extensions.CreatedJsonOrXml(todo, contentType);
     })
     .WithName("AddTodoXmlOrJson")
     .WithTags("TodoApi")
-    .Accepts<Todo>("application/json", "application/xml")
-    .Produces<Todo>(StatusCodes.Status201Created, "application/json", "application/xml");
+    .Accepts<Todo>("application/json", "application/xml");
 
 // Example of manually supporting file upload (comment out RequiresAntiforgery() line to allow POST from browser)
 app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery) =>
@@ -375,15 +368,14 @@ app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery
         return tokenSet;
     })
     .WithName("AddTodosFromFile_GetAntiXsrfToken")
-    .WithTags("TodoApi")
-    .Produces<AntiforgeryTokenSet>();
+    .WithTags("TodoApi");
 
-app.MapPost("/todos/fromfile", async Task<Results<BadRequest, ValidationProblem, Created<List<Todo>>>> (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
+app.MapPost("/todos/fromfile", async Task<Results<ValidationProblem, Created<List<Todo>>>> (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
     {
         var todos = todosFile.Value;
 
         if (!(todos?.Count > 0))
-            return Results.Extensions.BadRequest();
+            return Results.Extensions.ValidationProblem(new () { { nameof(todosFile), new[] { "The uploaded file contained no todos." } } });
 
         var todoCount = 0;
         foreach (var todo in todos)
@@ -400,8 +392,7 @@ app.MapPost("/todos/fromfile", async Task<Results<BadRequest, ValidationProblem,
         return Results.Extensions.Created(string.Join(';', todos.Select(t => $"/todo/{t.Id}")), todos);
     })
     .WithName("AddTodosFromFile")
-    .WithTags("TodoApi")
-    .AcceptsFormFile("todosFile");
+    .WithTags("TodoApi");
 
 app.MapPut("/todos/{id}", async Task<Results<ValidationProblem, NoContent, NotFound>> (int id, Todo inputTodo, TodoDb db) =>
     {

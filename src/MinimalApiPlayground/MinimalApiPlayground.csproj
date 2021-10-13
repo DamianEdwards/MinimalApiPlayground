@@ -18,6 +18,10 @@
     <PackageReference Include="MiniValidation.AspNetCore" Version="0.3.0-pre.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Mvc" Alias="Mvc" />
+  </ItemGroup>
+  
   <ItemGroup Condition="'$(EnablePreviewFeatures)' == 'True'">
     <PackageReference Include="System.Runtime.Experimental" Version="6.0.0-rc.*" />
   </ItemGroup>
