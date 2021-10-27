@@ -1,8 +1,7 @@
 ﻿using System.Globalization;
 using System.Reflection;
-using MinimalApiPlayground.ModelBinding;
 
-public struct PagingData : IExtensionBinder<PagingData>
+public struct PagingData
 {
     private static readonly string _sortByKey = "sortBy";
     private static readonly string _sortDirectionKey = "sortDir";

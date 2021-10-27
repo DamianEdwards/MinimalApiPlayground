@@ -4,7 +4,6 @@
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <EnablePreviewFeatures>True</EnablePreviewFeatures>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,10 +20,6 @@
 
   <ItemGroup>
     <Using Include="Microsoft.AspNetCore.Mvc" Alias="Mvc" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(EnablePreviewFeatures)' == 'True'">
-    <PackageReference Include="System.Runtime.Experimental" Version="6.0.0-rc.*" />
   </ItemGroup>
 
 </Project>

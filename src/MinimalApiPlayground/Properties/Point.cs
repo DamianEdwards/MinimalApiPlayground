@@ -1,4 +1,4 @@
-﻿public struct Point : IParseable<Point>
+﻿public struct Point
 {
     public double X { get; set; }
 

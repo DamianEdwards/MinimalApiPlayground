@@ -6,7 +6,7 @@ interface IWrapped<out T> where T : new()
     T Value { get; }
 }
 
-struct Wrapped<T> : IWrapped<T>, IParseable<Wrapped<T>> where T : new()
+struct Wrapped<T> : IWrapped<T> where T : new()
 {
     private static readonly Wrapped<T> EmptyWrapped = new(new());
 

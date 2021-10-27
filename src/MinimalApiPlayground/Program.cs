@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
-using MinimalApiPlayground.ModelBinding;
 using MinimalApis.Extensions.Binding;
 using MinimalApis.Extensions.Results;
 using MiniValidation;
@@ -152,10 +151,6 @@ app.MapGet("/optionality/{value?}", (string? value, int? number) =>
 
 // Custom parameter binding via [TargetType].TryParse()
 app.MapGet("/point", (Point point) => $"Point: {point}")
-    .WithTags("Examples");
-
-app.MapGet("/parse/{id}", (Parseable<int> id) =>
-    $"Successfully parsed {id.Value} as Parseable<int>!")
     .WithTags("Examples");
 
 // Custom parameter binding via [TargetType].BindAsync()
