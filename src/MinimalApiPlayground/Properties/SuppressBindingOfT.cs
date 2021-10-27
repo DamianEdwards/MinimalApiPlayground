@@ -1,5 +1,5 @@
 ﻿using System.Reflection;
-using MiniEssentials.Metadata;
+using MinimalApis.Extensions.Metadata;
 
 /// <summary>
 /// Suprresses the default binding logic of RequestDelegateFactory when accepted as a parameter to a route handler.
@@ -15,7 +15,7 @@ public class SuppressBinding<TValue> : IProvideEndpointParameterMetadata
 
     public static ValueTask<SuppressBinding<TValue?>> BindAsync(HttpContext httpContext, ParameterInfo parameter)
     {
-        return ValueTask.FromResult(new SuppressBinding<TValue?>(default(TValue)));
+        return ValueTask.FromResult(new SuppressBinding<TValue?>(default));
     }
 
     public static IEnumerable<object> GetMetadata(ParameterInfo parameter, IServiceProvider services)

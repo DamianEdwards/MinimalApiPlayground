@@ -9,10 +9,10 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
 using MinimalApiPlayground.ModelBinding;
+using MinimalApis.Extensions.Binding;
+using MinimalApis.Extensions.Results;
 using MiniValidation;
 using MiniValidation.AspNetCore;
-using MiniEssentials;
-using MiniEssentials.Results;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -121,6 +121,11 @@ app.MapGet("/html", (HttpContext context) => Results.Extensions.Html(
 app.MapGet("/htmlfile", (HttpContext context) => Results.Extensions.FromFile("Files\\example.html"))
    .ExcludeFromDescription();
 
+// Example file output from custom IResult
+app.MapGet("/getfile", (HttpContext context, IWebHostEnvironment env) =>
+    Results.File(env.ContentRootFileProvider.GetFileInfo("Files\\example.html").PhysicalPath, "text/html"))
+   .ExcludeFromDescription();
+
 // Parameter optionality
 app.MapGet("/optionality/{value?}", (string? value, int? number) =>
     {
@@ -170,14 +175,14 @@ app.MapPost("/bind-via-interface", (ExampleInput input) =>
     .Accepts<ExampleInput>("application/json");
 
 // An example extensible binder system that allows for parameter binders to be configured in DI
-app.MapPost("/model", (Model<Todo> model) =>
+app.MapPost("/model", (Bind<Todo> model) =>
     {
         Todo? todo = model;
         return Results.Extensions.Ok(todo);
     })
     .WithTags("Examples");
 
-app.MapPost("/model-nobinder", (Model<NoBinder> model) =>
+app.MapPost("/model-nobinder", (Bind<NoBinder> model) =>
     {
         NoBinder? value = model;
         return Results.Extensions.Ok(value);

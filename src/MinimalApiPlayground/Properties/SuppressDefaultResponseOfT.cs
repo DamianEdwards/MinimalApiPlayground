@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
-using MiniEssentials.Metadata;
+using MinimalApis.Extensions.Binding;
+using MinimalApis.Extensions.Metadata;
 
 /// <summary>
 /// Suprresses the default response logic of RequestDelegateFactory when accepted as a parameter to a route handler.

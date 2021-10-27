@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Reflection;
-using MiniEssentials.Metadata;
+using MinimalApis.Extensions.Metadata;
 
 public abstract class ApiInput<TInput> : IProvideEndpointParameterMetadata where TInput : ApiInput<TInput>
 {
