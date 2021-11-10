@@ -11,7 +11,6 @@ using Microsoft.Net.Http.Headers;
 using MinimalApis.Extensions.Binding;
 using MinimalApis.Extensions.Results;
 using MiniValidation;
-using MiniValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 

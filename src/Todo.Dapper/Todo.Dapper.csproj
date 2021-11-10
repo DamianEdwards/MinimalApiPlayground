@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
-    <PackageReference Include="MiniValidation.AspNetCore" Version="0.3.0-pre.*" />
+    <PackageReference Include="MinimalApis.Extensions" Version="0.3.0-pre.20211110.9" />
     <PackageReference Include="Dapper" Version="2.0.90" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.0" />
   </ItemGroup>

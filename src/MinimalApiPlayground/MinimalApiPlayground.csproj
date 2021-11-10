@@ -14,8 +14,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="6.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
-    <PackageReference Include="MiniValidation.AspNetCore" Version="0.3.0-pre.*" />
-    <PackageReference Include="MinimalApis.Extensions" Version="0.1.0-pre.20211027.5" />
+    <PackageReference Include="MinimalApis.Extensions" Version="0.3.0-pre.20211110.9" />
   </ItemGroup>
 
   <ItemGroup>
