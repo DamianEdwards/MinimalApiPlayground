@@ -119,7 +119,7 @@ app.MapGet("/html", (HttpContext context) => Results.Extensions.Html(
 app.MapGet("/htmlfile", (HttpContext context) => Results.Extensions.FromFile("Files\\example.html"))
    .ExcludeFromDescription();
 
-// Example file output from custom IResult
+// Example file output
 app.MapGet("/getfile", (HttpContext context, IWebHostEnvironment env) =>
     Results.File(env.ContentRootFileProvider.GetFileInfo("Files\\example.html").PhysicalPath, "text/html"))
    .ExcludeFromDescription();
