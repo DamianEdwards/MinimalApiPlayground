@@ -10,12 +10,12 @@ First-class support for validation as part of the new minimal APIs will unfortun
 ## Projects
 
 ### Todo.Dapper
-[This project](tree/main/src/Todo.Dapper) implements a simple Todos API including OpenAPI (Swagger) documentation and UI, and uses the [Dapper library](https://dapperlib.github.io/Dapper/) to perist data to a SQLite database.
+[This project](src/Todo.Dapper) implements a simple Todos API including OpenAPI (Swagger) documentation and UI, and uses the [Dapper library](https://dapperlib.github.io/Dapper/) to perist data to a SQLite database.
 
-There are some simple tests for this project in the [tests/Todo.Dapper.Tests](tree/main/tests/Todo.Dapper.Tests) project.
+There are some simple tests for this project in the [tests/Todo.Dapper.Tests](tests/Todo.Dapper.Tests) project.
 
 ### Todo.EFCore
-[This project](tree/main/src/Todo.EFCore) implements a simple Todos API including OpenAPI (Swagger) documentation and UI, and uses  using [Entity Framework Core](https://docs.microsoft.com/en-us/ef/core/) to perist data to a SQLite database.
+[This project](src/Todo.EFCore) implements a simple Todos API including OpenAPI (Swagger) documentation and UI, and uses  using [Entity Framework Core](https://docs.microsoft.com/en-us/ef/core/) to perist data to a SQLite database.
 
 ### MinimalApiPlayground
 This project contains numerous examples of ways to use and extend the new minimal APIs in ASP.NET Core 6 to build HTTP APIs.
