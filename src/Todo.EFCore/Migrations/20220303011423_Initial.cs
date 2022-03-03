@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
 
+#nullable disable
+
 namespace TodoEFCore.Migrations
 {
     public partial class Initial : Migration
@@ -12,7 +14,7 @@ namespace TodoEFCore.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Title = table.Column<string>(type: "TEXT", nullable: true),
+                    Title = table.Column<string>(type: "TEXT", nullable: false),
                     IsComplete = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>

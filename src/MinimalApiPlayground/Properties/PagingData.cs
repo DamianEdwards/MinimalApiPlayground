@@ -7,9 +7,11 @@ public struct PagingData
     private static readonly string _sortDirectionKey = "sortDir";
     private static readonly string _currentPageKey = "page";
 
-    public string? SortBy { get; init; }
+    public PagingData() { }
+
+    public string? SortBy { get; init; } = default;
     
-    public SortDirection SortDirection { get; init; }
+    public SortDirection SortDirection { get; init; } = default;
 
     public int CurrentPage { get; init; } = 1;
 

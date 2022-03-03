@@ -84,57 +84,56 @@ app.MapPut("/todos/{id}", async (int id, Todo inputTodo, TodoDb db) =>
     })
     .WithName("UpdateTodo")
     .ProducesValidationProblem()
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
+    .Produces(StatusCodes.Status404NotFound)
+    .Produces(StatusCodes.Status204NoContent);
 
 app.MapPut("/todos/{id}/mark-complete", async (int id, TodoDb db) =>
     {
-        if (await db.Todos.FindAsync(id) is Todo todo)
-        {
-            todo.IsComplete = true;
-            await db.SaveChangesAsync();
-            return Results.NoContent();
-        }
-        else
-        {
-            return Results.NotFound();
-        }
+        var todo = await db.Todos.FindAsync(id);
+
+        if (todo is null) return Results.NotFound();
+
+        todo.IsComplete = true;
+
+        await db.SaveChangesAsync();
+
+        return Results.NoContent();
     })
     .WithName("MarkComplete")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
+    .Produces(StatusCodes.Status404NotFound)
+    .Produces(StatusCodes.Status204NoContent);
 
 app.MapPut("/todos/{id}/mark-incomplete", async (int id, TodoDb db) =>
     {
-        if (await db.Todos.FindAsync(id) is Todo todo)
-        {
-            todo.IsComplete = false;
-            await db.SaveChangesAsync();
-            return Results.NoContent();
-        }
-        else
-        {
-            return Results.NotFound();
-        }
+        var todo = await db.Todos.FindAsync(id);
+
+        if (todo is null) return Results.NotFound();
+
+        todo.IsComplete = false;
+
+        await db.SaveChangesAsync();
+
+        return Results.NoContent();
     })
     .WithName("MarkIncomplete")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
+    .Produces(StatusCodes.Status404NotFound)
+    .Produces(StatusCodes.Status204NoContent);
 
 app.MapDelete("/todos/{id}", async (int id, TodoDb db) =>
     {
-        if (await db.Todos.FindAsync(id) is Todo todo)
-        {
-            db.Todos.Remove(todo);
-            await db.SaveChangesAsync();
-            return Results.Ok(todo);
-        }
+        var todo = await db.Todos.FindAsync(id);
 
-        return Results.NotFound();
+        if (todo is null) return Results.NotFound();
+
+        db.Todos.Remove(todo);
+
+        await db.SaveChangesAsync();
+
+        return Results.NoContent();
     })
     .WithName("DeleteTodo")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
+    .Produces(StatusCodes.Status404NotFound)
+    .Produces(StatusCodes.Status204NoContent);
 
 app.MapDelete("/todos/delete-all", async (TodoDb db) =>
     Results.Ok(await db.Database.ExecuteSqlRawAsync("DELETE FROM Todos")))
