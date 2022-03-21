@@ -168,6 +168,16 @@ app.MapPost("/bind-via-interface", (ExampleInput input) =>
     .WithTags("Examples")
     .Accepts<ExampleInput>("application/json");
 
+// Example of using a custom binder to get the request body as a delegate parameter
+app.MapPost("/bind-request-body/as-string", (Body<string> body) => $"Received: {body}")
+    .WithTags("Examples");
+app.MapPost("/bind-request-body/as-bytes", (Body<byte[]> body) => $"Received {body.Value.Length} bytes")
+    .Accepts<string>("text/plain")
+    .WithTags("Examples");
+app.MapPost("/bind-request-body/as-rom", (Body<ReadOnlyMemory<byte>> body) => $"Received {body.Value.Length} bytes")
+    .Accepts<byte[]>("application/octet-stream")
+    .WithTags("Examples");
+
 // An example extensible binder system that allows for parameter binders to be configured in DI
 app.MapPost("/model", (Bind<Todo> model) =>
     {
