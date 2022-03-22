@@ -2,10 +2,10 @@
 A place I'm trying out the new ASP.NET Core minimal APIs for hosting and HTTP APIs.
 
 ## Dependencies
-Code in this repo depends on the very latest bits. If you want to try it out, [grab the latest .NET 6 RC.2 SDK installer](https://dotnet.microsoft.com/download/dotnet/6.0).
+Code in this repo depends on the very latest bits. If you want to try it out, [grab the latest .NET 6 SDK installer](https://dotnet.microsoft.com/download/dotnet/6.0).
 
 ### MinimalValidation
-First-class support for validation as part of the new minimal APIs will unfortunately not land in .NET 6. However it's fairly straightforward to wire up the validation features found in `System.ComponentModel.Validation` through the use of a helper library ([like the example this repo uses](https://github.com/DamianEdwards/MinimalValidation)), or by using an existing validation library like [FluentValidation](https://fluentvalidation.net/).
+First-class support for validation as part of the new minimal APIs unfortunately did not land in .NET 6. However it's fairly straightforward to wire up the validation features found in `System.ComponentModel.Validation` through the use of a helper library ([like the example this repo uses](https://github.com/DamianEdwards/MiniValidation)), or by using an existing validation library like [FluentValidation](https://fluentvalidation.net/).
 
 ## Projects
 
