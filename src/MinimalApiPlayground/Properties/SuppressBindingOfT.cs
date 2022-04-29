@@ -1,11 +1,11 @@
 ﻿using System.Reflection;
-using MinimalApis.Extensions.Metadata;
+using Microsoft.AspNetCore.Http.Metadata;
 
 /// <summary>
 /// Suprresses the default binding logic of RequestDelegateFactory when accepted as a parameter to a route handler.
 /// </summary>
 /// <typeparam name="TValue">The <see cref="Type"/> of the parameter to suppress binding for.</typeparam>
-public class SuppressBinding<TValue> : IProvideEndpointParameterMetadata
+public class SuppressBinding<TValue> : IEndpointParameterMetadataProvider
 {
     public SuppressBinding(TValue? value)
     {
@@ -18,8 +18,8 @@ public class SuppressBinding<TValue> : IProvideEndpointParameterMetadata
         return ValueTask.FromResult(new SuppressBinding<TValue?>(default));
     }
 
-    public static IEnumerable<object> GetMetadata(ParameterInfo parameter, IServiceProvider services)
+    public static void PopulateMetadata(EndpointParameterMetadataContext context)
     {
-        yield return new Mvc.ConsumesAttribute(typeof(TValue), "application/json");
+        context.EndpointMetadata.Add(new Mvc.ConsumesAttribute(typeof(TValue), "application/json"));
     }
 }

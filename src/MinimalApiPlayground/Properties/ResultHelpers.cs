@@ -1,9 +1,8 @@
 ﻿using System.Text;
 using System.Xml.Serialization;
-using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.Net.Http.Headers;
-using MinimalApis.Extensions.Metadata;
+
 
 public static class ResultExtensions
 {
@@ -15,9 +14,53 @@ public static class ResultExtensions
 
         return new CreatedJsonOrXml<TResult>(responseBody, contentType);
     }
+
+    public static ContentHttpResult Content(this IResultExtensions resultExentsions, int statusCode, string? content, string? contentType)
+    {
+        return new ContentHttpResult(statusCode, content, contentType);
+    }
 }
 
-public class CreatedJsonOrXml<TResult> : IResult, IProvideEndpointResponseMetadata
+public class ContentHttpResult : IResult
+{
+    private const string DefaultContentType = "text/plain; charset=utf-8";
+    private static readonly Encoding DefaultEncoding = Encoding.UTF8;
+
+    public ContentHttpResult(int? statusCode, string? content, string? contentType)
+    {
+        StatusCode = statusCode ?? StatusCodes.Status200OK;
+        Content = content;
+        ContentType = contentType;
+    }
+
+    public int StatusCode { get; }
+
+    public string? Content { get; }
+
+    public string? ContentType { get; }
+
+    public async Task ExecuteAsync(HttpContext httpContext)
+    {
+        ResponseContentTypeHelper.ResolveContentTypeAndEncoding(
+            ContentType,
+            httpContext.Response.ContentType,
+            (DefaultContentType, DefaultEncoding),
+            ResponseContentTypeHelper.GetEncoding,
+            out var resolvedContentType,
+            out var resolvedContentTypeEncoding);
+
+        httpContext.Response.StatusCode = StatusCode;
+        httpContext.Response.ContentType = resolvedContentType;
+
+        if (Content is not null)
+        {
+            httpContext.Response.ContentLength = resolvedContentTypeEncoding.GetByteCount(Content);
+            await httpContext.Response.WriteAsync(Content);
+        }
+    }
+}
+
+public class CreatedJsonOrXml<TResult> : IResult, IEndpointParameterMetadataProvider
 {
     private readonly TResult _responseBody;
     private readonly string _contentType;
@@ -56,9 +99,9 @@ public class CreatedJsonOrXml<TResult> : IResult, IProvideEndpointResponseMetada
         }
     }
 
-    public static IEnumerable<object> GetMetadata(Endpoint endpoint, IServiceProvider services)
+    public static void PopulateMetadata(EndpointMetadataContext context)
     {
-        yield return new Mvc.ProducesResponseTypeAttribute(typeof(TResult), StatusCodes.Status201Created, "application/json", "application/xml");
+        context.EndpointMetadata.Add(new Mvc.ProducesResponseTypeAttribute(typeof(TResult), StatusCodes.Status201Created, "application/json", "application/xml"));
     }
 
     internal static void ThrowIfUnsupportedContentType(string contentType)

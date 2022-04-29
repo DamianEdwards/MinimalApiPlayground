@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Reflection;
-using MinimalApis.Extensions.Metadata;
+using Microsoft.AspNetCore.Http.Metadata;
 
-public abstract class ApiInput<TInput> : IProvideEndpointParameterMetadata where TInput : ApiInput<TInput>
+public abstract class ApiInput<TInput> : IEndpointParameterMetadataProvider where TInput : ApiInput<TInput>
 {
     public static async ValueTask<TInput?> BindAsync(HttpContext context, ParameterInfo parameter)
     {
@@ -14,9 +14,9 @@ public abstract class ApiInput<TInput> : IProvideEndpointParameterMetadata where
         return input;
     }
 
-    public static IEnumerable<object> GetMetadata(ParameterInfo parameter, IServiceProvider services)
+    public static void PopulateMetadata(EndpointParameterMetadataContext context)
     {
-        yield return new Mvc.ConsumesAttribute(typeof(TInput), "application/json");
+        context.EndpointMetadata.Add(new Mvc.ConsumesAttribute(typeof(TInput), "application/json"));
     }
 }
 

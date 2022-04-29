@@ -1,13 +1,13 @@
 ﻿using System.Reflection;
+using Microsoft.AspNetCore.Http.Metadata;
 using MinimalApis.Extensions.Binding;
-using MinimalApis.Extensions.Metadata;
 
 /// <summary>
 /// Suprresses the default response logic of RequestDelegateFactory when accepted as a parameter to a route handler.
 /// Default binding of the <typeparamref name="TValue"/> will still occur.
 /// </summary>
 /// <typeparam name="TValue">The <see cref="Type"/> of the parameter.</typeparam>
-public class SuppressDefaultResponse<TValue> : IProvideEndpointParameterMetadata
+public class SuppressDefaultResponse<TValue> : IEndpointParameterMetadataProvider
 {
     public SuppressDefaultResponse(TValue? value, int statusCode)
     {
@@ -41,8 +41,9 @@ public class SuppressDefaultResponse<TValue> : IProvideEndpointParameterMetadata
         }
     }
 
-    public static IEnumerable<object> GetMetadata(ParameterInfo parameter, IServiceProvider services)
+    public static void PopulateMetadata(EndpointParameterMetadataContext context)
     {
-        yield return new Mvc.ConsumesAttribute(typeof(TValue), "application/json");
+        context.EndpointMetadata.Add(new Mvc.ConsumesAttribute(typeof(TValue), "application/json"));
+
     }
 }
