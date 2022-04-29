@@ -15,9 +15,9 @@ public static class ResultExtensions
         return new CreatedJsonOrXml<TResult>(responseBody, contentType);
     }
 
-    public static ContentHttpResult Content(this IResultExtensions resultExentsions, int statusCode, string? content, string? contentType)
+    public static ContentHttpResult Content(this IResultExtensions resultExentsions, string? content, string? contentType, int statusCode)
     {
-        return new ContentHttpResult(statusCode, content, contentType);
+        return new ContentHttpResult(content, contentType, statusCode);
     }
 }
 
@@ -26,11 +26,11 @@ public class ContentHttpResult : IResult
     private const string DefaultContentType = "text/plain; charset=utf-8";
     private static readonly Encoding DefaultEncoding = Encoding.UTF8;
 
-    public ContentHttpResult(int? statusCode, string? content, string? contentType)
+    public ContentHttpResult(string? content, string? contentType, int? statusCode)
     {
-        StatusCode = statusCode ?? StatusCodes.Status200OK;
         Content = content;
         ContentType = contentType;
+        StatusCode = statusCode ?? StatusCodes.Status200OK;
     }
 
     public int StatusCode { get; }

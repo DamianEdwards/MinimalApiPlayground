@@ -63,7 +63,7 @@ app.MapGet("/error", Results<ProblemHttpResult, ContentHttpResult> (HttpContext 
         }
 
         // Plain text
-        return Results.Extensions.Content(statusCode, badRequestEx?.Message ?? "An unhandled exception occurred while processing the request.", null);
+        return Results.Extensions.Content(badRequestEx?.Message ?? "An unhandled exception occurred while processing the request.", null, statusCode);
     })
    .ExcludeFromDescription();
 
