@@ -44,7 +44,7 @@ app.UseAntiforgery();
 
 // Error handling
 var problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
-app.MapGet("/error", Results<ProblemHttpResult, ContentHttpResult> (HttpContext context) =>
+app.Map("/error", Results<ProblemHttpResult, ContentHttpResult> (HttpContext context) =>
     {
         var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
         var badRequestEx = error as BadHttpRequestException;
@@ -74,7 +74,7 @@ app.MapGet("/throw/{statusCode?}", (int? statusCode) =>
             >= 400 and < 500 => new BadHttpRequestException(
                 $"{statusCode} {ReasonPhrases.GetReasonPhrase(statusCode.Value)}",
                 statusCode.Value),
-            _ => throw new Exception("uh oh")
+            _ => new Exception("uh oh")
         };
     })
    .WithTags("Examples");
