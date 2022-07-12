@@ -26,7 +26,7 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddProblemDetailsDeveloperPageExceptionFilter();
 builder.Services.AddParameterBinder<TodoBinder, Todo>();
 
-builder.Services.AddEndpointsMetadataProviderApiExplorer();
+builder.Services.AddEndpointsApiExplorer();
 
 // This enables MVC's model binders
 builder.Services.AddMvcCore();
