@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http.Metadata;
 using MinimalApis.Extensions.Binding;
 
 /// <summary>
-/// Suprresses the default response logic of RequestDelegateFactory when accepted as a parameter to a route handler.
+/// Suppresses the default response logic of RequestDelegateFactory when accepted as a parameter to a route handler.
 /// Default binding of the <typeparamref name="TValue"/> will still occur.
 /// </summary>
 /// <typeparam name="TValue">The <see cref="Type"/> of the parameter.</typeparam>

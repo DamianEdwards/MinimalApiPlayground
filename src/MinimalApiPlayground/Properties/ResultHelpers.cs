@@ -60,7 +60,7 @@ public class ContentHttpResult : IResult
     }
 }
 
-public class CreatedJsonOrXml<TResult> : IResult, IEndpointParameterMetadataProvider
+public class CreatedJsonOrXml<TResult> : IResult, IEndpointMetadataProvider
 {
     private readonly TResult _responseBody;
     private readonly string _contentType;
