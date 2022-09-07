@@ -37,35 +37,41 @@ await EnsureDb(app.Services, app.Logger);
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler(new ExceptionHandlerOptions { ExceptionHandlingPath = "/error", AllowStatusCode404Response = true });
+    // Error handling
+    var problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
+    app.UseExceptionHandler(new ExceptionHandlerOptions
+    {
+        AllowStatusCode404Response = true,
+        ExceptionHandler = async (HttpContext context) =>
+        {
+            var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+            var badRequestEx = error as BadHttpRequestException;
+            var statusCode = badRequestEx?.StatusCode ?? StatusCodes.Status500InternalServerError;
+            IResult? result = null;
+
+            if (context.Request.GetTypedHeaders().Accept?.Any(h => problemJsonMediaType.IsSubsetOf(h)) == true)
+            {
+                // JSON Problem Details
+                var extensions = new Dictionary<string, object?> { { "requestId", Activity.Current?.Id ?? context.TraceIdentifier } };
+
+                result = error switch
+                {
+                    BadHttpRequestException ex => TypedResults.Problem(detail: ex.Message, statusCode: ex.StatusCode, extensions: extensions),
+                    _ => TypedResults.Problem(extensions: extensions)
+                };
+            }
+            else
+            {
+                // Plain text
+                result = Results.Extensions.Content(badRequestEx?.Message ?? "An unhandled exception occurred while processing the request.", null, statusCode);
+            }
+
+            await result.ExecuteAsync(context);
+        }
+    });
 }
 
 app.UseAntiforgery();
-
-// Error handling
-var problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
-app.Map("/error", Results<ProblemHttpResult, ContentHttpResult> (HttpContext context) =>
-    {
-        var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
-        var badRequestEx = error as BadHttpRequestException;
-        var statusCode = badRequestEx?.StatusCode ?? StatusCodes.Status500InternalServerError;
-
-        if (context.Request.GetTypedHeaders().Accept?.Any(h => problemJsonMediaType.IsSubsetOf(h)) == true)
-        {
-            var extensions = new Dictionary<string, object?> { { "requestId", Activity.Current?.Id ?? context.TraceIdentifier } };
-
-            // JSON Problem Details
-            return error switch
-            {
-                BadHttpRequestException ex => TypedResults.Problem(detail: ex.Message, statusCode: ex.StatusCode, extensions: extensions),
-                _ => TypedResults.Problem(extensions: extensions)
-            };
-        }
-
-        // Plain text
-        return Results.Extensions.Content(badRequestEx?.Message ?? "An unhandled exception occurred while processing the request.", null, statusCode);
-    })
-   .ExcludeFromDescription();
 
 app.MapGet("/throw/{statusCode?}", (int? statusCode) =>
     {
