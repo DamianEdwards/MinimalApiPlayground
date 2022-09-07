@@ -122,7 +122,7 @@ app.MapGet("/htmlfile", (HttpContext context) => Results.Extensions.FromFile("Fi
 
 // Example file output
 app.MapGet("/getfile", (HttpContext context, IWebHostEnvironment env) =>
-    Results.File(env.ContentRootFileProvider.GetFileInfo("Files\\example.html").PhysicalPath, "text/html"))
+    Results.File(env.ContentRootFileProvider.GetFileInfo("Files\\example.html").PhysicalPath!, "text/html"))
    .ExcludeFromDescription();
 
 // Parameter optionality
@@ -350,7 +350,7 @@ async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 // Example of manually supporting more than JSON for input/output
 app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblem, CreatedJsonOrXml<Todo>>> (HttpRequest request, TodoDb db) =>
     {
-        string contentType = request.Headers.ContentType;
+        string? contentType = request.Headers.ContentType;
 
         var todo = contentType switch
         {
@@ -368,7 +368,7 @@ app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, Validat
         db.Todos.Add(todo);
         await db.SaveChangesAsync();
 
-        return Results.Extensions.CreatedJsonOrXml(todo, contentType);
+        return Results.Extensions.CreatedJsonOrXml(todo, contentType!);
     })
     .WithName("AddTodoXmlOrJson")
     .WithTags("TodoApi")

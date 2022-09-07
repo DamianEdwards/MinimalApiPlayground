@@ -8,7 +8,7 @@ namespace Microsoft.AspNetCore.Diagnostics;
 /// </summary>
 public class ProblemDetailsDeveloperPageExceptionFilter : IDeveloperPageExceptionFilter
 {
-    private static readonly MediaTypeHeaderValue _problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
+    private static readonly MediaTypeHeaderValue _problemJsonMediaType = new("application/problem+json");
 
     public async Task HandleExceptionAsync(ErrorContext errorContext, Func<ErrorContext, Task> next)
     {
@@ -33,7 +33,7 @@ public class ProblemDetailsDeveloperPageExceptionFilter : IDeveloperPageExceptio
             problemDetails.Extensions.Add("requestId", Activity.Current?.Id ?? httpContext.TraceIdentifier);
             problemDetails.Extensions.Add("exception", ex.GetType().FullName);
             problemDetails.Extensions.Add("stack", ex.StackTrace);
-            problemDetails.Extensions.Add("headers", httpContext.Request.Headers.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value));
+            problemDetails.Extensions.Add("headers", httpContext.Request.Headers.ToDictionary(kvp => kvp.Key, kvp => (string?)kvp.Value));
             problemDetails.Extensions.Add("routeValues", httpContext.GetRouteData().Values);
             problemDetails.Extensions.Add("query", httpContext.Request.Query);
             var endpoint = httpContext.GetEndpoint();
