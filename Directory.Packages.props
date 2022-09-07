@@ -1,8 +1,6 @@
 ﻿<Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <AspNetCorePackagesVersion>7.0.0-rc.1.22427.1</AspNetCorePackagesVersion>
-    <EfCorePackagesVersion>7.0.0-rc.1.22426.7</EfCorePackagesVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.0-rc.1.22427.1" />
