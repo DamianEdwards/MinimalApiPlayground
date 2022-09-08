@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Http;
 using Xunit;
 
 namespace MinimalApiPlayground.Tests;
@@ -51,12 +52,11 @@ public class ErrorHandling
         
         // Development only details
         Assert.Null(problemDetails?.Exception);
-        Assert.Null(problemDetails?.Stack);
-        Assert.Null(problemDetails?.Headers);
-        Assert.Null(problemDetails?.RouteValues);
-        Assert.Null(problemDetails?.Query);
-        Assert.Null(problemDetails?.Endpoint);
-        Assert.Null(problemDetails?.Detail);
+        Assert.Null(problemDetails?.Exception?.Error);
+        Assert.Null(problemDetails?.Exception?.Path);
+        Assert.Null(problemDetails?.Exception?.Endpoint);
+        Assert.Null(problemDetails?.Exception?.RouteValues);
+        Assert.Null(problemDetails?.Exception?.Headers);
     }
 
     [Fact]
@@ -68,12 +68,11 @@ public class ErrorHandling
 
         // Development only details
         Assert.NotNull(problemDetails?.Exception);
-        Assert.NotNull(problemDetails?.Stack);
-        Assert.NotNull(problemDetails?.Headers);
-        Assert.NotNull(problemDetails?.RouteValues);
-        Assert.NotNull(problemDetails?.Query);
-        Assert.NotNull(problemDetails?.Endpoint);
-        Assert.NotNull(problemDetails?.Detail);
+        Assert.NotNull(problemDetails?.Exception?.Error);
+        Assert.NotNull(problemDetails?.Exception?.Path);
+        Assert.NotNull(problemDetails?.Exception?.Endpoint);
+        Assert.NotNull(problemDetails?.Exception?.RouteValues);
+        Assert.NotNull(problemDetails?.Exception?.Headers);
     }
 
     [Theory]
@@ -137,23 +136,21 @@ public class ErrorHandling
 
     public class ProblemDetails
     {
+        public string? Type { get; set; }
         public string? Title {  get; set; }
         public int Status { get; set; }
         public string? Detail { get; set; }
-        public string? Exception { get; set; }
-        public string? Stack { get; set; }
-        public IDictionary<string, string>? Headers { get; set; }
-        public IDictionary<string, object>? RouteValues { get; set; }
-        public IEnumerable<string>? Query { get; set; }
-        public EndpointDetails? Endpoint { get; set; }
         public string? RequestId { get; set; }
-    }
+        public ExceptionDetails? Exception { get; set; }
 
-    public class EndpointDetails
-    {
-        public string? DisplayName { get; set; }
-        public string? RoutePattern { get; set; }
-        public int RouteOrder { get; set; }
-        public string? HttpMethods { get; set; }
+        public class ExceptionDetails
+        {
+            public string? Error { get; set; }
+            public PathString Path { get; set; }
+            public string? Endpoint { get; set; }
+            public IDictionary<string, IEnumerable<string>>? Headers { get; set; }
+            public IDictionary<string, object>? RouteValues { get; set; }
+            public IEnumerable<string>? Query { get; set; }
+        }
     }
 }

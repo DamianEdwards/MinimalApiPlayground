@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Net.Http.Headers;
 using MinimalApis.Extensions.Binding;
 using MinimalApis.Extensions.Results;
 using MiniValidation;
@@ -23,7 +22,11 @@ var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Da
 builder.Services.AddAntiforgery();
 builder.Services.AddSqlite<TodoDb>(connectionString);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-builder.Services.AddProblemDetailsDeveloperPageExceptionFilter();
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = static ctx =>
+        ctx.ProblemDetails.Extensions["requestId"] = Activity.Current?.Id ?? ctx.HttpContext.TraceIdentifier;
+});
 builder.Services.AddParameterBinder<TodoBinder, Todo>();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -38,35 +41,33 @@ await EnsureDb(app.Services, app.Logger);
 if (!app.Environment.IsDevelopment())
 {
     // Error handling
-    var problemJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
     app.UseExceptionHandler(new ExceptionHandlerOptions
     {
         AllowStatusCode404Response = true,
         ExceptionHandler = async (HttpContext context) =>
         {
-            var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
-            var badRequestEx = error as BadHttpRequestException;
-            var statusCode = badRequestEx?.StatusCode ?? StatusCodes.Status500InternalServerError;
-            IResult? result = null;
+            // Pass-through status codes from BadHttpRequestException
+            var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
+            var error = exceptionHandlerFeature?.Error;
 
-            if (context.Request.GetTypedHeaders().Accept?.Any(h => problemJsonMediaType.IsSubsetOf(h)) == true)
+            if (error is BadHttpRequestException badRequestEx)
             {
-                // JSON Problem Details
-                var extensions = new Dictionary<string, object?> { { "requestId", Activity.Current?.Id ?? context.TraceIdentifier } };
+                context.Response.StatusCode = badRequestEx.StatusCode;
+            }
 
-                result = error switch
+            if (context.RequestServices.GetRequiredService<IProblemDetailsService>() is { } problemDetailsService)
+            {
+                await problemDetailsService.WriteAsync(new()
                 {
-                    BadHttpRequestException ex => TypedResults.Problem(detail: ex.Message, statusCode: ex.StatusCode, extensions: extensions),
-                    _ => TypedResults.Problem(extensions: extensions)
-                };
+                    HttpContext = context,
+                    AdditionalMetadata = exceptionHandlerFeature?.Endpoint?.Metadata,
+                    ProblemDetails = { Status = context.Response.StatusCode }
+                });
             }
-            else
+            else if (ReasonPhrases.GetReasonPhrase(context.Response.StatusCode) is { } reasonPhrase)
             {
-                // Plain text
-                result = Results.Extensions.Content(badRequestEx?.Message ?? "An unhandled exception occurred while processing the request.", null, statusCode);
+                await context.Response.WriteAsync(reasonPhrase);
             }
-
-            await result.ExecuteAsync(context);
         }
     });
 }
