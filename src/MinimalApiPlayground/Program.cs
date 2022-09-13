@@ -7,8 +7,6 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Http.Metadata;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using MinimalApis.Extensions.Binding;
@@ -93,7 +91,9 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 
-var examples = app.MapGroup("/").WithTags("Examples");
+var examples = app.MapGroup("/")
+    .WithTags("Examples")
+    .WithOpenApi();
 
 //examples.WithMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), 401, "application/problem+json", "text/plain"));
 //examples.WithMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), 403, "application/problem+json", "text/plain"));
