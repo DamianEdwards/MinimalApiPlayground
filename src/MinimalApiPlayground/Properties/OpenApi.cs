@@ -44,6 +44,12 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         {
             //options.RequestBodyFilter<ConsumesRequestTypeRequestFilter>();
             options.SchemaFilter<XmlSchemaFilter>();
+            options.InferSecuritySchemes();
+            options.DocumentFilter<InferGlobalSecurityRequirementsFilter>();
+        });
+        services.Configure<SwaggerGeneratorOptions>(options =>
+        {
+            options.InferSecuritySchemes = true;
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
     }
@@ -186,6 +192,26 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
             actionDescriptor.AttributeRouteInfo?.Name
             ?? (actionDescriptor.EndpointMetadata.FirstOrDefault(m => m is IEndpointNameMetadata) as IEndpointNameMetadata)?.EndpointName
             ?? methodName;
+    }
+}
+
+/// <summary>
+/// Infers global security requirements for a swagger document based on the security schemes contained in the document
+/// </summary>
+internal class InferGlobalSecurityRequirementsFilter : IDocumentFilter
+{
+    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    {
+        foreach (var scheme in swaggerDoc.Components.SecuritySchemes)
+        {
+            swaggerDoc.SecurityRequirements.Add(new()
+            {
+                {
+                    new() { Reference = new() { Type = ReferenceType.SecurityScheme, Id = scheme.Key } },
+                    new string[0] // scopes
+                }
+            });
+        }
     }
 }
 

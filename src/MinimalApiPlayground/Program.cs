@@ -1,11 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using MinimalApis.Extensions.Binding;
@@ -19,20 +22,30 @@ var connectionString = builder.Configuration.GetConnectionString("Todos") ?? "Da
 // Customize the JSON serialization options used by minimal with following line
 //builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o => o.SerializerOptions.IncludeFields = true);
 
-builder.Services.AddAntiforgery();
+// Add database services
 builder.Services.AddSqlite<TodoDb>(connectionString);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+// Add services required to support using MVC's model binders
+builder.Services.AddMvcCore();
+
+// Enable & configure JSON Problem Details error responses
 builder.Services.AddProblemDetails(options =>
 {
-    options.CustomizeProblemDetails = static ctx =>
-        ctx.ProblemDetails.Extensions["requestId"] = Activity.Current?.Id ?? ctx.HttpContext.TraceIdentifier;
+    options.CustomizeProblemDetails = context =>
+        context.ProblemDetails.Extensions["requestId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
 });
+
+// Add services for AuthN/AuthZ, this will also auto-add the required middleware in .NET 7
+// Use the command line tool `dotnet user-jwts` to manage development-time JWTs for this app
+builder.Services.AddAuthentication().AddJwtBearer();
+builder.Services.AddAuthorizationBuilder();
+
+// Add Anti-CSRF/XSRF services
+builder.Services.AddAntiforgery();
+
+// Add a custom parameter binder (from MinimalApis.Extensions)
 builder.Services.AddParameterBinder<TodoBinder, Todo>();
-
-builder.Services.AddEndpointsApiExplorer();
-
-// This enables MVC's model binders
-builder.Services.AddMvcCore();
 
 var app = builder.Build();
 
@@ -46,11 +59,12 @@ if (!app.Environment.IsDevelopment())
         AllowStatusCode404Response = true,
         ExceptionHandler = async (HttpContext context) =>
         {
-            // Pass-through status codes from BadHttpRequestException
+            // The default exception handler always responds with status code 500 so we're overriding here to
+            // allow pass-through status codes from BadHttpRequestException.
+            // GitHub issue to support this in framework: https://github.com/dotnet/aspnetcore/issues/43831
             var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
-            var error = exceptionHandlerFeature?.Error;
 
-            if (error is BadHttpRequestException badRequestEx)
+            if (exceptionHandlerFeature?.Error is BadHttpRequestException badRequestEx)
             {
                 context.Response.StatusCode = badRequestEx.StatusCode;
             }
@@ -74,57 +88,86 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAntiforgery();
 
-app.MapGet("/throw/{statusCode?}", (int? statusCode) =>
+app.UseStatusCodePages();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+var examples = app.MapGroup("/").WithTags("Examples");
+
+//examples.WithMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), 401, "application/problem+json", "text/plain"));
+//examples.WithMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), 403, "application/problem+json", "text/plain"));
+
+// Add an endpoint that forces an exception to be thrown when requested
+examples.MapGet("/throw/{statusCode?}", (int? statusCode) =>
     {
         throw statusCode switch
         {
             >= 400 and < 500 => new BadHttpRequestException(
                 $"{statusCode} {ReasonPhrases.GetReasonPhrase(statusCode.Value)}",
                 statusCode.Value),
-            _ => new Exception("uh oh")
+            null => new Exception("uh oh"),
+            _ => new Exception($"Staus code {statusCode}")
         };
-    })
-   .WithTags("Examples");
+    });
 
 // Hello World
-app.MapGet("/", () => "Hello World!")
-   .WithName("HelloWorld")
-   .WithTags("Examples");
+examples.MapGet("/", () => "Hello World!")
+   .WithName("HelloWorld");
 
-app.MapGet("/hello", () => new { Hello = "World" })
-   .WithName("HelloWorldApi")
-   .WithTags("Examples");
+examples.MapGet("/hello", () => new { Hello = "World" })
+   .WithName("HelloWorldApi");
 
-app.MapGet("/goodbye", () => new { Goodbye = "World" })
-   .WithTags("Examples");
+examples.MapGet("/goodbye", () => new { Goodbye = "World" });
 
-app.MapGet("/hellofunc", Endpoints.HelloWorldFunc)
-   .WithName(nameof(Endpoints.HelloWorldFunc))
-   .WithTags("Examples");
+examples.MapGet("/hellofunc", Endpoints.HelloWorldFunc)
+   .WithName(nameof(Endpoints.HelloWorldFunc));
 
 // Working with raw JSON
-app.MapGet("/jsonraw", () => JsonDocument.Parse("{ \"Id\": 123, \"Name\": \"Example\" }"))
-   .WithName("RawJsonOutput")
-   .WithTags("Examples");
+examples.MapGet("/jsonraw", () => JsonDocument.Parse("{ \"Id\": 123, \"Name\": \"Example\" }"))
+   .WithName("RawJsonOutput");
 
-app.MapPost("/jsonraw", (JsonElement json) => $"Thanks for the JSON:\r\n{json}")
-   .WithName("RawJsonInput")
-   .WithTags("Examples");
+examples.MapPost("/jsonraw", (JsonElement json) => $"Thanks for the JSON:\r\n{json}")
+   .WithName("RawJsonInput");
 
 // Example HTML output from custom IResult
-app.MapGet("/html", (HttpContext context) => Results.Extensions.Html(
-@$"<!doctype html>
-<html>
-<head><title>miniHTML</title></head>
-<body>
-<h1>Hello World</h1>
-<p>The time on the server is {DateTime.Now:O}</p>
-</body>
-</html>"))
+app.MapGet("/html", (HttpContext context) =>
+    Results.Extensions.Html(
+        $"""
+            <!doctype html>
+            <html>
+              <head><title>miniHTML</title></head>
+              <body>
+                <h1>Hello World</h1>
+                <p>The time on the server is {DateTime.Now:O}</p>
+              </body>
+            </html>
+        """))
    .ExcludeFromDescription();
 
+// Getting user information
+examples.MapGet("/user/from-context", (HttpContext httpContext) =>
+        new { message = $"Hello {httpContext.User?.Identity?.Name ?? "guest"}!" })
+    .WithName("GetUserFromHttpContext");
+
+examples.MapGet("/user/from-principal", (ClaimsPrincipal user) =>
+        new { message = $"Hello {user?.Identity?.Name ?? "guest"}!" })
+    .WithName("GetUserFromPrincipal");
+
+// Protecting APIs with authentication/authorization
+examples.MapGet("/secret", (ClaimsPrincipal user) =>
+        $"Shhh {user.Identity?.Name ?? throw new BadHttpRequestException("Who are you?")}, it's a secret")
+    .Produces(200, typeof(string), "text/plain")
+    .RequireAuthorization(); // Uses AuthorizationOptions.DefaultPolicy
+
+examples.MapGet("/secret/role", (ClaimsPrincipal user) => $"You are have the 'SecretReader' role")
+    .RequireAuthorization(policy => policy.RequireAuthenticatedUser().RequireRole("SecretReader"));
+
+examples.MapGet("/secret/scope", (ClaimsPrincipal user) => $"You have the 'admin' scope claim")
+    .RequireAuthorization(policy => policy.RequireAuthenticatedUser().RequireClaim("scope", "admin"));
+
 // Example file output from custom IResult
-app.MapGet("/htmlfile", (HttpContext context) => Results.Extensions.FromFile("Files\\example.html"))
+examples.MapGet("/htmlfile", (HttpContext context) => Results.Extensions.FromFile("Files\\example.html"))
    .ExcludeFromDescription();
 
 // Example file output
@@ -133,7 +176,7 @@ app.MapGet("/getfile", (HttpContext context, IWebHostEnvironment env) =>
    .ExcludeFromDescription();
 
 // Parameter optionality
-app.MapGet("/optionality/{value?}", (string? value, int? number) =>
+examples.MapGet("/optionality/{value?}", (string? value, int? number) =>
     {
         var sb = new StringBuilder();
         if (value is not null)
@@ -153,55 +196,45 @@ app.MapGet("/optionality/{value?}", (string? value, int? number) =>
             sb.AppendLine($"You didn't provide a value for '{nameof(number)}', but that's OK!");
         }
         return sb.ToString();
-    })
-    .WithTags("Examples");
+    });
 
 // Custom parameter binding via [TargetType].TryParse()
-app.MapGet("/point", (Point point) => $"Point: {point}")
-    .WithTags("Examples");
+examples.MapGet("/point", (Point point) => $"Point: {point}");
 
 // Custom parameter binding via [TargetType].BindAsync()
-app.MapGet("/paged", (PagingData paging) =>
-    $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}")
-    .WithTags("Examples");
+examples.MapGet("/paged", (PagingData paging) =>
+    $"ToString: {paging}\r\nToQueryString: {paging.ToQueryString()}");
 
 // Example of a wrapper generic type the can bind its generic argument
-app.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
-    $"Successfully parsed {id.Value} as Wrapped<int>!")
-    .WithTags("Examples");
+examples.MapGet("/wrapped/{id}", (Wrapped<int> id) =>
+    $"Successfully parsed {id.Value} as Wrapped<int>!");
 
 // Example of bind logic coming from static methods defined on inherited/implemented interface
-app.MapPost("/bind-via-interface", (ExampleInput input) =>
+examples.MapPost("/bind-via-interface", (ExampleInput input) =>
     $"Successfully bound {input.StringProperty} as ExampleInput!")
-    .WithTags("Examples")
     .Accepts<ExampleInput>("application/json");
 
 // Example of using a custom binder to get the request body as a delegate parameter
-app.MapPost("/bind-request-body/as-string", (Body<string> body) => $"Received: {body}")
-    .WithTags("Examples");
-app.MapPost("/bind-request-body/as-bytes", (Body<byte[]> body) => $"Received {body.Value.Length} bytes")
-    .Accepts<string>("text/plain")
-    .WithTags("Examples");
-app.MapPost("/bind-request-body/as-rom", (Body<ReadOnlyMemory<byte>> body) => $"Received {body.Value.Length} bytes")
-    .Accepts<byte[]>("application/octet-stream")
-    .WithTags("Examples");
+examples.MapPost("/bind-request-body/as-string", (Body<string> body) => $"Received: {body}");
+examples.MapPost("/bind-request-body/as-bytes", (Body<byte[]> body) => $"Received {body.Value.Length} bytes")
+    .Accepts<string>("text/plain");
+examples.MapPost("/bind-request-body/as-rom", (Body<ReadOnlyMemory<byte>> body) => $"Received {body.Value.Length} bytes")
+    .Accepts<byte[]>("application/octet-stream");
 
 // An example extensible binder system that allows for parameter binders to be configured in DI
-app.MapPost("/model", (Bind<Todo> model) =>
+examples.MapPost("/model", (Bind<Todo> model) =>
     {
         Todo? todo = model;
         return TypedResults.Ok(todo);
-    })
-    .WithTags("Examples");
+    });
 
-app.MapPost("/model-nobinder", (Bind<NoBinder> model) =>
+examples.MapPost("/model-nobinder", (Bind<NoBinder> model) =>
     {
         NoBinder? value = model;
         return TypedResults.Ok(value);
-    })
-    .WithTags("Examples");
+    });
 
-app.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpContext httpContext) =>
+examples.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpContext httpContext) =>
     {
         if (todo.Exception != null)
         {
@@ -216,10 +249,9 @@ app.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpCont
         }
 
         return TypedResults.Ok(todo.Value);
-    })
-    .WithTags("Examples");
+    });
 
-app.MapPost("/suppress-binding", async Task<Results<BadRequest<string>, Ok<Todo>, PlainText, UnprocessableEntity<string>>> (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
+examples.MapPost("/suppress-binding", async Task<Results<BadRequest<string>, Ok<Todo>, PlainText, UnprocessableEntity<string>>> (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
     {
         try
         {
@@ -244,55 +276,50 @@ app.MapPost("/suppress-binding", async Task<Results<BadRequest<string>, Ok<Todo>
             // Exception occurred during default binding!
             return TypedResults.UnprocessableEntity(ex.ToString());
         }
-    })
-    .WithTags("Examples");
+    });
 
 // Using MVC's model binding logic via a generic wrapping shim
-app.MapGet("/paged2", (ModelBinder<PagedData> paging) =>
-    $"model: {paging.Model}, valid: {paging.ModelState.IsValid}")
-    .WithTags("Examples");
+examples.MapGet("/paged2", (ModelBinder<PagedData> paging) =>
+    $"model: {paging.Model}, valid: {paging.ModelState.IsValid}");
 
 // Overriding/mutating response defaults using middleware
 app.UseMutateResponse();
 
-app.MapGet("/mutate-test/{id}", (int? id) =>
+examples.MapGet("/mutate-test/{id}", (int? id) =>
     {
         // Request this via /mutate-test/foo will return 400 by default
         return $"Id of '{id}' was bound from request successfully!";
     })
-    .MutateResponse(404, "The ID specified was not in the correct format. Please don't do that.")
-    .WithTags("Examples");
+    .MutateResponse(404, "The ID specified was not in the correct format. Please don't do that.");
 
 // Todos API
-app.MapGet("/todos/sample", () => new[] {
+var todos = app.MapGroup("/todos").WithTags("TodoApi");
+
+todos.MapGet("/sample", () => new[] {
         new Todo { Id = 1, Title = "Do this" },
         new Todo { Id = 2, Title = "Do this too" }
     })
-   .WithTags("Examples", "TodoApi");
+   .WithTags("Examples");
 
-app.MapGet("/todos", async (TodoDb db) => await db.Todos.ToListAsync())
-   .WithName("GetAllTodos")
-   .WithTags("TodoApi");
+todos.MapGet("", async (TodoDb db) => await db.Todos.ToListAsync())
+   .WithName("GetAllTodos");
 
-app.MapGet("/todos/incompleted", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync())
-   .WithName("GetIncompletedTodos")
-   .WithTags("TodoApi");
+todos.MapGet("/incompleted", async (TodoDb db) => await db.Todos.Where(t => !t.IsComplete).ToListAsync())
+   .WithName("GetIncompletedTodos");
 
-app.MapGet("/todos/completed", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync())
-   .WithName("GetCompletedTodos")
-   .WithTags("TodoApi");
+todos.MapGet("/completed", async (TodoDb db) => await db.Todos.Where(t => t.IsComplete).ToListAsync())
+   .WithName("GetCompletedTodos");
 
-app.MapGet("/todos/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, TodoDb db) =>
+todos.MapGet("/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, TodoDb db) =>
     {
         return await db.Todos.FindAsync(id)
             is Todo todo
                 ? TypedResults.Ok(todo)
                 : TypedResults.NotFound();
     })
-    .WithName("GetTodoById")
-    .WithTags("TodoApi");
+    .WithName("GetTodoById");
 
-app.MapPost("/todos", async Task<Results<ValidationProblem, Created<Todo>>> (Todo todo, TodoDb db) =>
+todos.MapPost("/", async Task<Results<ValidationProblem, Created<Todo>>> (Todo todo, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(todo, out var errors))
             return TypedResults.ValidationProblem(errors);
@@ -302,11 +329,10 @@ app.MapPost("/todos", async Task<Results<ValidationProblem, Created<Todo>>> (Tod
 
         return TypedResults.Created($"/todo/{todo.Id}", todo);
     })
-    .WithName("AddTodo")
-    .WithTags("TodoApi");
+    .WithName("AddTodo");
 
-// Example of a custom DTO base type that could use abstract 
-app.MapPost("/todos/dto", Results<ValidationProblem, Created<Todo>> (CreateTodoInput input, TodoDb db) =>
+// Example of a custom DTO base type that could use a shared abstract static method to implement binding
+todos.MapPost("/dto", Results<ValidationProblem, Created<Todo>> (CreateTodoInput input, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(input, out var errors))
             return TypedResults.ValidationProblem(errors);
@@ -316,11 +342,10 @@ app.MapPost("/todos/dto", Results<ValidationProblem, Created<Todo>> (CreateTodoI
 
         return TypedResults.Created($"/todo/{newTodo.Id}", newTodo);
     })
-    .WithName("AddTodoViaDto")
-    .WithTags("TodoApi");
+    .WithName("AddTodoViaDto");
 
 // Example of a custom wrapper type that performs validation
-app.MapPost("/todos/validated-wrapper", async Task<Results<ValidationProblem, Created<Todo>>> (Validated<Todo> inputTodo, TodoDb db) =>
+todos.MapPost("/validated-wrapper", async Task<Results<ValidationProblem, Created<Todo>>> (Validated<Todo> inputTodo, TodoDb db) =>
     {
         var (todo, isValid) = inputTodo;
         if (!isValid || todo == null)
@@ -332,17 +357,15 @@ app.MapPost("/todos/validated-wrapper", async Task<Results<ValidationProblem, Cr
         return TypedResults.Created($"/todo/{todo.Id}", todo);
     })
     .WithName("AddTodo_ValidatedWrapper")
-    .WithTags("TodoApi")
     .Accepts<Todo>("application/json");
 
 // Example of adding an endpoint via a local function MethodGroup with attributes to describe it
-app.MapPost("/todos-local-func", AddTodoFunc);
+todos.MapPost("/todos-local-func", AddTodoFunc);
 
 // EndpointName set automatically to name of method
 [Mvc.ProducesResponseType(typeof(Mvc.ValidationProblemDetails), StatusCodes.Status400BadRequest)]
 [Mvc.ProducesResponseType(typeof(Todo), StatusCodes.Status201Created)]
 [EndpointName(nameof(AddTodoFunc))]
-[Tags("TodoApi")]
 async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 {
     if (!MiniValidator.TryValidate(todo, out var errors))
@@ -355,7 +378,7 @@ async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 }
 
 // Example of manually supporting more than JSON for input/output
-app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblem, CreatedJsonOrXml<Todo>>> (HttpRequest request, TodoDb db) =>
+todos.MapPost("/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblem, CreatedJsonOrXml<Todo>>> (HttpRequest request, TodoDb db) =>
     {
         string? contentType = request.Headers.ContentType;
 
@@ -378,20 +401,18 @@ app.MapPost("/todos/xmlorjson", async Task<Results<UnsupportedMediaType, Validat
         return Results.Extensions.CreatedJsonOrXml(todo, contentType!);
     })
     .WithName("AddTodoXmlOrJson")
-    .WithTags("TodoApi")
     .Accepts<Todo>("application/json", "application/xml");
 
 // Example of manually supporting file upload (comment out RequiresAntiforgery() line to allow POST from browser)
-app.MapGet("/todos/fromfile", (HttpContext httpContext, IAntiforgery antiforgery) =>
+todos.MapGet("/fromfile", (HttpContext httpContext, IAntiforgery antiforgery) =>
     {
         var tokenSet = antiforgery.GetTokens(httpContext);
 
         return tokenSet;
     })
-    .WithName("AddTodosFromFile_GetAntiXsrfToken")
-    .WithTags("TodoApi");
+    .WithName("AddTodosFromFile_GetAntiXsrfToken");
 
-app.MapPost("/todos/fromfile", async Task<Results<ValidationProblem, Created<List<Todo>>>> (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
+todos.MapPost("/fromfile", async Task<Results<ValidationProblem, Created<List<Todo>>>> (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
     {
         var todos = todosFile.Value;
 
@@ -412,10 +433,9 @@ app.MapPost("/todos/fromfile", async Task<Results<ValidationProblem, Created<Lis
 
         return TypedResults.Created(string.Join(';', todos.Select(t => $"/todo/{t.Id}")), todos);
     })
-    .WithName("AddTodosFromFile")
-    .WithTags("TodoApi");
+    .WithName("AddTodosFromFile");
 
-app.MapPut("/todos/{id}", async Task<Results<ValidationProblem, NoContent, NotFound>> (int id, Todo inputTodo, TodoDb db) =>
+todos.MapPut("/{id}", async Task<Results<ValidationProblem, NoContent, NotFound>> (int id, Todo inputTodo, TodoDb db) =>
     {
         if (!MiniValidator.TryValidate(inputTodo, out var errors))
             return TypedResults.ValidationProblem(errors);
@@ -432,10 +452,9 @@ app.MapPut("/todos/{id}", async Task<Results<ValidationProblem, NoContent, NotFo
             return TypedResults.NotFound();
         }
     })
-    .WithName("UpdateTodo")
-    .WithTags("TodoApi");
+    .WithName("UpdateTodo");
 
-app.MapPut("/todos/{id}/mark-complete", async Task<Results<NoContent, NotFound>> (int id, TodoDb db) =>
+todos.MapPut("/{id}/mark-complete", async Task<Results<NoContent, NotFound>> (int id, TodoDb db) =>
     {
         if (await db.Todos.FindAsync(id) is Todo todo)
         {
@@ -448,10 +467,9 @@ app.MapPut("/todos/{id}/mark-complete", async Task<Results<NoContent, NotFound>>
             return TypedResults.NotFound();
         }
     })
-    .WithName("CompleteTodo")
-    .WithTags("TodoApi");
+    .WithName("CompleteTodo");
 
-app.MapPut("/todos/{id}/mark-incomplete", async Task<Results<NoContent, NotFound>> (int id, TodoDb db) =>
+todos.MapPut("/{id}/mark-incomplete", async Task<Results<NoContent, NotFound>> (int id, TodoDb db) =>
     {
         if (await db.Todos.FindAsync(id) is Todo todo)
         {
@@ -464,10 +482,9 @@ app.MapPut("/todos/{id}/mark-incomplete", async Task<Results<NoContent, NotFound
             return TypedResults.NotFound();
         }
     })
-    .WithName("UncompleteTodo")
-    .WithTags("TodoApi");
+    .WithName("UncompleteTodo");
 
-app.MapDelete("/todos/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, TodoDb db) =>
+todos.MapDelete("/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, TodoDb db) =>
     {
         if (await db.Todos.FindAsync(id) is Todo todo)
         {
@@ -478,17 +495,15 @@ app.MapDelete("/todos/{id}", async Task<Results<Ok<Todo>, NotFound>> (int id, To
 
         return TypedResults.NotFound();
     })
-    .WithName("DeleteTodo")
-    .WithTags("TodoApi");
+    .WithName("DeleteTodo");
 
-app.MapDelete("/todos/delete-all", async Task<Ok<int>> (TodoDb db) =>
+todos.MapDelete("/delete-all", async Task<Ok<int>> (TodoDb db) =>
     {
         var rowCount = await db.Database.ExecuteSqlRawAsync("DELETE FROM Todos");
 
         return TypedResults.Ok(rowCount);
     })
-    .WithName("DeleteAllTodos")
-    .WithTags("TodoApi");
+    .WithName("DeleteAllTodos");
 
 app.Run();
 
@@ -543,7 +558,7 @@ public class TodoDb : DbContext
     public TodoDb(DbContextOptions<TodoDb> options)
         : base(options) { }
 
-    public DbSet<Todo> Todos => Set<Todo>();
+    public DbSet<Todo> Todos { get; set; } = default!;
 }
 
 // Make the implicit Program class public so test projects can access it
