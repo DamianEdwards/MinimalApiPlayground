@@ -3,11 +3,11 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.0-rc.1.22427.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="7.0.0-rc.1.22427.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.0-rc.1.22427.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="7.0.0-rc.1.22427.1" />
-    <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="7.0.0-rc.1.22427.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.0-rc.1.22427.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="7.0.0-rc.1.22427.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.0-rc.1.22427.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="7.0.0-rc.1.22427.2" />
+    <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="7.0.0-rc.1.22427.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.0-rc.1.22426.7" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.0-rc.1.22426.7" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="7.0.0-rc.1.22426.7" />
