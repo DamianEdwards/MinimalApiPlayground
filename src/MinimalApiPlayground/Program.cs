@@ -6,11 +6,9 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Net.Http.Headers;
 using MinimalApis.Extensions.Binding;
 using MinimalApis.Extensions.Results;
 using MiniValidation;
@@ -106,9 +104,6 @@ var examples = app.MapGroup("/")
     .WithTags("Examples")
     .WithOpenApi();
 
-//examples.WithMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), 401, "application/problem+json", "text/plain"));
-//examples.WithMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), 403, "application/problem+json", "text/plain"));
-
 // Add an endpoint that forces an exception to be thrown when requested
 examples.MapGet("/throw/{statusCode?}", (int? statusCode) =>
     {
@@ -187,7 +182,8 @@ app.MapGet("/getfile", (HttpContext context, IWebHostEnvironment env) =>
    .ExcludeFromDescription();
 
 // Example file upload
-examples.MapPost("/fromform", (IFormFileCollection formFiles) => $"Thanks for {formFiles.Count} {(formFiles.Count == 1 ? "file" : "files")}!");
+examples.MapPost("/fromform", (IFormFileCollection formFiles)
+    => $"Thanks for {formFiles.Count} {(formFiles.Count == 1 ? "file" : "files")}!");
 
 // Parameter optionality
 examples.MapGet("/optionality/{value?}", (string? value, int? number) =>
@@ -248,6 +244,7 @@ examples.MapPost("/model-nobinder", (Bind<NoBinder> model) =>
         return TypedResults.Ok(value);
     });
 
+// Example of using a custom wrapper type that suppresses the default response in cases of binding errors
 examples.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, HttpContext httpContext) =>
     {
         if (todo.Exception != null)
@@ -265,7 +262,11 @@ examples.MapPost("/suppress-defaults", (SuppressDefaultResponse<Todo?> todo, Htt
         return TypedResults.Ok(todo.Value);
     });
 
-examples.MapPost("/suppress-binding", async Task<Results<BadRequest<string>, Ok<Todo>, PlainText, UnprocessableEntity<string>>> (SuppressBinding<Todo?> todo, HttpContext httpContext) =>
+// Example of using a custom wrapper type that suppresses the default parameter binding logic
+examples.MapPost("/suppress-binding",
+    async Task<Results<BadRequest<string>, Ok<Todo>, PlainText, UnprocessableEntity<string>>> (
+        SuppressBinding<Todo?> todo,
+        HttpContext httpContext) =>
     {
         try
         {
@@ -359,7 +360,8 @@ todos.MapPost("/dto", Results<ValidationProblem, Created<Todo>> (CreateTodoInput
     .WithName("AddTodoViaDto");
 
 // Example of a custom wrapper type that performs validation
-todos.MapPost("/validated-wrapper", async Task<Results<ValidationProblem, Created<Todo>>> (Validated<Todo> inputTodo, TodoDb db) =>
+todos.MapPost("/validated-wrapper",
+    async Task<Results<ValidationProblem, Created<Todo>>> (Validated<Todo> inputTodo, TodoDb db) =>
     {
         var (todo, isValid) = inputTodo;
         if (!isValid || todo == null)
@@ -392,7 +394,8 @@ async Task<IResult> AddTodoFunc(Todo todo, TodoDb db)
 }
 
 // Example of manually supporting more than JSON for input/output
-todos.MapPost("/xmlorjson", async Task<Results<UnsupportedMediaType, ValidationProblem, CreatedJsonOrXml<Todo>>> (HttpRequest request, TodoDb db) =>
+todos.MapPost("/xmlorjson",
+    async Task<Results<UnsupportedMediaType, ValidationProblem, CreatedJsonOrXml<Todo>>> (HttpRequest request, TodoDb db) =>
     {
         string? contentType = request.Headers.ContentType;
 
@@ -426,18 +429,23 @@ todos.MapGet("/fromfile", (HttpContext httpContext, IAntiforgery antiforgery) =>
     })
     .WithName("AddTodosFromFile_GetAntiXsrfToken");
 
-todos.MapPost("/fromfile", async Task<Results<ValidationProblem, Created<List<Todo>>>> (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
+todos.MapPost("/fromfile",
+    async Task<Results<ValidationProblem, Created<List<Todo>>>> (JsonFormFile<List<Todo>> todosFile, TodoDb db) =>
     {
         var todos = todosFile.Value;
 
         if (!(todos?.Count > 0))
-            return TypedResults.ValidationProblem(new Dictionary<string, string[]>() { { nameof(todosFile), new[] { "The uploaded file contained no todos." } } });
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>()
+            {
+                { nameof(todosFile), new[] { "The uploaded file contained no todos." } }
+            });
 
         var todoCount = 0;
         foreach (var todo in todos)
         {
             if (!MiniValidator.TryValidate(todo, out var errors))
-                return TypedResults.ValidationProblem(errors.ToDictionary(entry => $"[{todoCount}].{entry.Key}", entry => entry.Value));
+                return TypedResults.ValidationProblem(
+                    errors.ToDictionary(entry => $"[{todoCount}].{entry.Key}", entry => entry.Value));
 
             db.Todos.Add(todo);
             todoCount++;
