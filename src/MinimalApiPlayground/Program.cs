@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
@@ -54,10 +53,7 @@ await EnsureDb(app.Services, app.Logger);
 
 if (!app.Environment.IsDevelopment())
 {
-    var jsonMediaType = new MediaTypeHeaderValue("application/json");
-    var problemDetailsJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
-
-// Error handling
+    // Error handling
     app.UseExceptionHandler(new ExceptionHandlerOptions
     {
         AllowStatusCode404Response = true,
@@ -73,25 +69,10 @@ if (!app.Environment.IsDevelopment())
                 context.Response.StatusCode = badRequestEx.StatusCode;
             }
 
-            var writeJson = false;
-
-            if (context.Request.GetTypedHeaders().Accept is { Count: > 0 } acceptHeader)
+            if (context.Request.AcceptsJson()
+                && context.RequestServices.GetRequiredService<IProblemDetailsService>() is { } problemDetailsService)
             {
-                for (var i = 0; i < acceptHeader.Count; i++)
-                {
-                    var acceptHeaderValue = acceptHeader[i];
-
-                    if (jsonMediaType.IsSubsetOf(acceptHeaderValue) ||
-                        problemDetailsJsonMediaType.IsSubsetOf(acceptHeaderValue))
-                    {
-                        writeJson = true;
-                        break;
-                    }
-                }
-            }
-
-            if (context.RequestServices.GetRequiredService<IProblemDetailsService>() is { } problemDetailsService && writeJson)
-            {
+                // Write as JSON problem details
                 await problemDetailsService.WriteAsync(new()
                 {
                     HttpContext = context,
@@ -99,17 +80,16 @@ if (!app.Environment.IsDevelopment())
                     ProblemDetails = { Status = context.Response.StatusCode }
                 });
             }
-            else if (ReasonPhrases.GetReasonPhrase(context.Response.StatusCode) is { } reasonPhrase)
-            {
-                context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync(reasonPhrase);
-                await context.Response.WriteAsync("\r\n");
-                await context.Response.WriteAsync($"Request ID: {Activity.Current?.Id ?? context.TraceIdentifier}");
-            }
             else
             {
                 context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync("An error occurred");
+                var message = ReasonPhrases.GetReasonPhrase(context.Response.StatusCode) switch
+                {
+                    { Length: > 0 } reasonPhrase => reasonPhrase,
+                    _ => "An error occurred"
+                };
+                await context.Response.WriteAsync(message + "\r\n");
+                await context.Response.WriteAsync($"Request ID: {Activity.Current?.Id ?? context.TraceIdentifier}");
             }
         }
     });
@@ -205,6 +185,9 @@ examples.MapGet("/htmlfile", (HttpContext context) => Results.Extensions.FromFil
 app.MapGet("/getfile", (HttpContext context, IWebHostEnvironment env) =>
     Results.File(env.ContentRootFileProvider.GetFileInfo("Files\\example.html").PhysicalPath!, "text/html"))
    .ExcludeFromDescription();
+
+// Example file upload
+examples.MapPost("/fromform", (IFormFileCollection formFiles) => $"Thanks for {formFiles.Count} {(formFiles.Count == 1 ? "file" : "files")}!");
 
 // Parameter optionality
 examples.MapGet("/optionality/{value?}", (string? value, int? number) =>
