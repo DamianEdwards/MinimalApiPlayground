@@ -2,6 +2,8 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Formatters;
@@ -44,6 +46,13 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
         {
             //options.RequestBodyFilter<ConsumesRequestTypeRequestFilter>();
             options.SchemaFilter<XmlSchemaFilter>();
+            options.InferSecuritySchemes();
+            options.DocumentFilter<InferGlobalSecurityRequirementsFilter>();
+            options.DocumentFilter<InferServersFilter>();
+        });
+        services.Configure<SwaggerGeneratorOptions>(options =>
+        {
+            options.InferSecuritySchemes = true;
         });
         services.AddTransient<IStartupFilter, OpenApiConfiguration>();
     }
@@ -70,6 +79,8 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
     internal static void ConfigureSwashbuckle(IApplicationBuilder app)
     {
         var env = app.ApplicationServices.GetRequiredService<IHostEnvironment>();
+
+        app.UseHttpsRedirection();
 
         var rewriterOptions = new RewriteOptions();
         if (env.IsDevelopment())
@@ -186,6 +197,48 @@ public class OpenApiConfiguration : IHostingStartup, IStartupFilter
             actionDescriptor.AttributeRouteInfo?.Name
             ?? (actionDescriptor.EndpointMetadata.FirstOrDefault(m => m is IEndpointNameMetadata) as IEndpointNameMetadata)?.EndpointName
             ?? methodName;
+    }
+}
+
+/// <summary>
+/// Infers servers for a swagger document based on the configured address for the application's HTTP server
+/// </summary>
+internal class InferServersFilter : IDocumentFilter
+{
+    private readonly IServerAddressesFeature _serverAddresses;
+
+    public InferServersFilter(IServer server)
+    {
+        _serverAddresses = server.Features.Get<IServerAddressesFeature>()
+            ?? throw new InvalidOperationException($"Could not resolve {nameof(IServerAddressesFeature)} server feature");
+    }
+
+    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    {
+        foreach (var address in _serverAddresses.Addresses)
+        {
+            swaggerDoc.Servers.Add(new() { Url = address });
+        }
+    }
+}
+
+/// <summary>
+/// Infers global security requirements for a swagger document based on the security schemes contained in the document
+/// </summary>
+internal class InferGlobalSecurityRequirementsFilter : IDocumentFilter
+{
+    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    {
+        foreach (var scheme in swaggerDoc.Components.SecuritySchemes)
+        {
+            swaggerDoc.SecurityRequirements.Add(new()
+            {
+                {
+                    new() { Reference = new() { Type = ReferenceType.SecurityScheme, Id = scheme.Key } },
+                    new string[0] // scopes
+                }
+            });
+        }
     }
 }
 
