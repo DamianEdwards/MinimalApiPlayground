@@ -6,9 +6,12 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Net.Http.Headers;
 using MinimalApis.Extensions.Binding;
 using MinimalApis.Extensions.Results;
 using MiniValidation;
@@ -51,7 +54,10 @@ await EnsureDb(app.Services, app.Logger);
 
 if (!app.Environment.IsDevelopment())
 {
-    // Error handling
+    var jsonMediaType = new MediaTypeHeaderValue("application/json");
+    var problemDetailsJsonMediaType = new MediaTypeHeaderValue("application/problem+json");
+
+// Error handling
     app.UseExceptionHandler(new ExceptionHandlerOptions
     {
         AllowStatusCode404Response = true,
@@ -67,7 +73,24 @@ if (!app.Environment.IsDevelopment())
                 context.Response.StatusCode = badRequestEx.StatusCode;
             }
 
-            if (context.RequestServices.GetRequiredService<IProblemDetailsService>() is { } problemDetailsService)
+            var writeJson = false;
+
+            if (context.Request.GetTypedHeaders().Accept is { Count: > 0 } acceptHeader)
+            {
+                for (var i = 0; i < acceptHeader.Count; i++)
+                {
+                    var acceptHeaderValue = acceptHeader[i];
+
+                    if (jsonMediaType.IsSubsetOf(acceptHeaderValue) ||
+                        problemDetailsJsonMediaType.IsSubsetOf(acceptHeaderValue))
+                    {
+                        writeJson = true;
+                        break;
+                    }
+                }
+            }
+
+            if (context.RequestServices.GetRequiredService<IProblemDetailsService>() is { } problemDetailsService && writeJson)
             {
                 await problemDetailsService.WriteAsync(new()
                 {
@@ -78,7 +101,15 @@ if (!app.Environment.IsDevelopment())
             }
             else if (ReasonPhrases.GetReasonPhrase(context.Response.StatusCode) is { } reasonPhrase)
             {
+                context.Response.ContentType = "text/plain";
                 await context.Response.WriteAsync(reasonPhrase);
+                await context.Response.WriteAsync("\r\n");
+                await context.Response.WriteAsync($"Request ID: {Activity.Current?.Id ?? context.TraceIdentifier}");
+            }
+            else
+            {
+                context.Response.ContentType = "text/plain";
+                await context.Response.WriteAsync("An error occurred");
             }
         }
     });

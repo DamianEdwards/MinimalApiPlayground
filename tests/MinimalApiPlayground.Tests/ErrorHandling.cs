@@ -112,8 +112,17 @@ public class ErrorHandling
         using var response = await client.SendAsync(request);
         var responseBody = await response.Content.ReadAsStringAsync();
 
+
+        var responseContentType = response.Content.Headers.ContentType?.ToString();
+        var responseMediaType = responseContentType switch
+        {
+            { } value => Microsoft.Net.Http.Headers.MediaTypeHeaderValue.Parse(value),
+            _ => null
+        };
+        var textPlain = Microsoft.Net.Http.Headers.MediaTypeHeaderValue.Parse("text/plain");
+
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        Assert.Equal(MediaTypeWithQualityHeaderValue.Parse("text/plain; charset=utf-8"), response.Content.Headers.ContentType);
+        Assert.True(responseMediaType?.IsSubsetOf(textPlain));
     }
 
     private async Task<ProblemDetails?> GET_Throw_Responds_With_ProblemDetails(PlaygroundApplication application, string? accept = null)
