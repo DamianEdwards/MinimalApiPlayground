@@ -5,10 +5,13 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using MinimalApiPlayground.Properties;
 using MinimalApis.Extensions.Binding;
 using MinimalApis.Extensions.Results;
 using MiniValidation;
@@ -29,10 +32,7 @@ builder.Services.AddMvcCore();
 
 // Enable & configure JSON Problem Details error responses
 builder.Services.AddProblemDetails(options =>
-{
-    options.CustomizeProblemDetails = context =>
-        context.ProblemDetails.Extensions["requestId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
-});
+    options.CustomizeProblemDetails = context => CustomizeProblemDetails(context.ProblemDetails, context.HttpContext));
 
 // Add services for AuthN/AuthZ, this will also auto-add the required middleware in .NET 7
 // Use the command line tool `dotnet user-jwts` to manage development-time JWTs for this app
@@ -102,7 +102,8 @@ app.UseAuthorization();
 
 var examples = app.MapGroup("/")
     .WithTags("Examples")
-    .WithOpenApi();
+    .WithOpenApi()
+    .AddEndpointFilter<ProblemDetailsServiceEndpointFilter>();
 
 // Add an endpoint that forces an exception to be thrown when requested
 examples.MapGet("/throw/{statusCode?}", (int? statusCode) =>
@@ -122,12 +123,19 @@ examples.MapGet("/", () => "Hello World!")
    .WithName("HelloWorld");
 
 examples.MapGet("/hello", () => new { Hello = "World" })
-   .WithName("HelloWorldApi");
+   .WithName("HelloWorldApi")
+   .WithOpenApi(o => new(o)
+   {
+        Summary = "This is the summary",
+        Description = "This is the description"
+   });
 
 examples.MapGet("/goodbye", () => new { Goodbye = "World" });
 
 examples.MapGet("/hellofunc", Endpoints.HelloWorldFunc)
    .WithName(nameof(Endpoints.HelloWorldFunc));
+
+examples.MapGet("/problem", () => Results.Problem(title: "Example explicit problem details result"));
 
 // Working with raw JSON
 examples.MapGet("/jsonraw", () => JsonDocument.Parse("{ \"Id\": 123, \"Name\": \"Example\" }"))
@@ -528,6 +536,9 @@ todos.MapDelete("/delete-all", async Task<Ok<int>> (TodoDb db) =>
     .WithName("DeleteAllTodos");
 
 app.Run();
+
+void CustomizeProblemDetails(ProblemDetails problemDetails, HttpContext httpContext) =>
+    problemDetails.Extensions["requestId"] = Activity.Current?.Id ?? httpContext.TraceIdentifier;
 
 async Task EnsureDb(IServiceProvider services, ILogger logger)
 {
