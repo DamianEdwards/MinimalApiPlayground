@@ -14,9 +14,9 @@ public abstract class ApiInput<TInput> : IEndpointParameterMetadataProvider wher
         return input;
     }
 
-    public static void PopulateMetadata(EndpointParameterMetadataContext context)
+    public static void PopulateMetadata(ParameterInfo parameter, EndpointBuilder builder)
     {
-        context.EndpointMetadata.Add(new Mvc.ConsumesAttribute(typeof(TInput), "application/json"));
+        builder.Metadata.Add(new Mvc.ConsumesAttribute(typeof(TInput), "application/json"));
     }
 }
 

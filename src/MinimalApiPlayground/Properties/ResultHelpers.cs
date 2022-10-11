@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Reflection;
+using System.Text;
 using System.Xml.Serialization;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.Net.Http.Headers;
@@ -99,9 +100,9 @@ public class CreatedJsonOrXml<TResult> : IResult, IEndpointMetadataProvider
         }
     }
 
-    public static void PopulateMetadata(EndpointMetadataContext context)
+    public static void PopulateMetadata(MethodInfo method, EndpointBuilder builder)
     {
-        context.EndpointMetadata.Add(new Mvc.ProducesResponseTypeAttribute(typeof(TResult), StatusCodes.Status201Created, "application/json", "application/xml"));
+        builder.Metadata.Add(new Mvc.ProducesResponseTypeAttribute(typeof(TResult), StatusCodes.Status201Created, "application/json", "application/xml"));
     }
 
     internal static void ThrowIfUnsupportedContentType(string contentType)

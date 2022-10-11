@@ -18,8 +18,8 @@ public class SuppressBinding<TValue> : IEndpointParameterMetadataProvider
         return ValueTask.FromResult(new SuppressBinding<TValue?>(default));
     }
 
-    public static void PopulateMetadata(EndpointParameterMetadataContext context)
+    public static void PopulateMetadata(ParameterInfo parameter, EndpointBuilder builder)
     {
-        context.EndpointMetadata.Add(new Mvc.ConsumesAttribute(typeof(TValue), "application/json"));
+        builder.Metadata.Add(new Mvc.ConsumesAttribute(typeof(TValue), "application/json"));
     }
 }

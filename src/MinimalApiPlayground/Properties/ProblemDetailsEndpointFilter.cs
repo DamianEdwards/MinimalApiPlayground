@@ -40,7 +40,7 @@ public class ProblemDetailsServiceEndpointFilter : IEndpointFilter
                 {
                     httpContext.Response.StatusCode = statusCode;
                 }
-                await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                await problemDetailsService.WriteAsync(new()
                 {
                     HttpContext = httpContext,
                     ProblemDetails = Value

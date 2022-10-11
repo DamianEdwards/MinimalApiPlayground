@@ -52,7 +52,7 @@ public class ErrorHandling
         
         // Development only details
         Assert.Null(problemDetails?.Exception);
-        Assert.Null(problemDetails?.Exception?.Error);
+        Assert.Null(problemDetails?.Exception?.Details);
         Assert.Null(problemDetails?.Exception?.Path);
         Assert.Null(problemDetails?.Exception?.Endpoint);
         Assert.Null(problemDetails?.Exception?.RouteValues);
@@ -68,7 +68,7 @@ public class ErrorHandling
 
         // Development only details
         Assert.NotNull(problemDetails?.Exception);
-        Assert.NotNull(problemDetails?.Exception?.Error);
+        Assert.NotNull(problemDetails?.Exception?.Details);
         Assert.NotNull(problemDetails?.Exception?.Path);
         Assert.NotNull(problemDetails?.Exception?.Endpoint);
         Assert.NotNull(problemDetails?.Exception?.RouteValues);
@@ -154,8 +154,8 @@ public class ErrorHandling
 
         public class ExceptionDetails
         {
-            public string? Error { get; set; }
-            public PathString Path { get; set; }
+            public string? Details { get; set; }
+            public string? Path { get; set; }
             public string? Endpoint { get; set; }
             public IDictionary<string, IEnumerable<string>>? Headers { get; set; }
             public IDictionary<string, object>? RouteValues { get; set; }
