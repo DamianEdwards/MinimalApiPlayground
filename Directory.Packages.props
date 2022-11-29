@@ -15,7 +15,7 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.4.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.4.0" />
     <PackageVersion Include="Microsoft.OpenApi" Version="1.4.3" />
-    <PackageVersion Include="MinimalApis.Extensions" Version="0.9.1-pre.20221114.39" />
+    <PackageVersion Include="MinimalApis.Extensions" Version="0.10.0" />
     <PackageVersion Include="Dapper" Version="2.0.123" />
     <PackageVersion Include="xunit" Version="2.4.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.4.5" />
