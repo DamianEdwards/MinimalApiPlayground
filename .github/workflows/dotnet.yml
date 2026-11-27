@@ -14,8 +14,11 @@ jobs:
     steps:
     - uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2
     
-    - name: Setup .NET SDK (global.json)
-      uses: actions/setup-dotnet@871f041373faaad213a635d9afb62905ec029bbb # v1
+    - name: Setup .NET SDK (global.json) and .NET 7 runtime
+      uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+      with:
+        global-json-file: global.json
+        dotnet-version: 7.0.x
     
     - name: Restore dependencies
       run: dotnet restore
